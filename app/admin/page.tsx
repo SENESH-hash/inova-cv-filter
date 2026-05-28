@@ -16,6 +16,7 @@ export default function AdminPage() {
   const [dateTo, setDateTo] = useState('')
   const [selected, setSelected] = useState<any>(null)
   const [loading, setLoading] = useState(false)
+  const [searchText, setSearchText] = useState('')
 
   useEffect(() => {
     const t = localStorage.getItem('admin_token')
@@ -42,10 +43,33 @@ export default function AdminPage() {
     if (dateTo) params.set('date_to', dateTo)
     const res = await fetch(`/api/admin/applicants?${params}`, { headers: { Authorization: `Bearer ${token}` } })
     if (res.status === 401) { localStorage.removeItem('admin_token'); setToken(null); return }
-    const data = await res.json()
+    let data = await res.json()
+
+    if (searchText.trim()) {
+      const s = searchText.toLowerCase()
+      data = data.filter((a: any) => {
+        const ed = a.extracted_data || {}
+        return (
+          a.full_name?.toLowerCase().includes(s) ||
+          a.email?.toLowerCase().includes(s) ||
+          a.desired_role?.toLowerCase().includes(s) ||
+          a.status?.toLowerCase().includes(s) ||
+          ed.location?.toLowerCase().includes(s) ||
+          ed.degree_level?.toLowerCase().includes(s) ||
+          ed.field_of_study?.toLowerCase().includes(s) ||
+          ed.english_level?.toLowerCase().includes(s) ||
+          ed.summary?.toLowerCase().includes(s) ||
+          ed.skills?.some((sk: string) => sk.toLowerCase().includes(s)) ||
+          ed.methodologies?.some((m: string) => m.toLowerCase().includes(s)) ||
+          ed.past_job_titles?.some((t: string) => t.toLowerCase().includes(s)) ||
+          ed.certifications?.some((c: string) => c.toLowerCase().includes(s))
+        )
+      })
+    }
+
     setApplicants(data)
     setLoading(false)
-  }, [token, filter, filterValue, dateFrom, dateTo])
+  }, [token, filter, filterValue, dateFrom, dateTo, searchText])
 
   useEffect(() => { if (token) fetchApplicants() }, [token, fetchApplicants])
 
@@ -102,6 +126,12 @@ export default function AdminPage() {
       </div>
       <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '14px 28px', display: 'flex', gap: 12, flexWrap: 'wrap' as const, alignItems: 'flex-end' }}>
         <div>
+          <label style={styles.label}>🔍 Search anything</label>
+          <input value={searchText} onChange={e => setSearchText(e.target.value)}
+            placeholder="e.g. React, Colombo, MBA, Agile..."
+            style={{ ...styles.input, width: 240 }} />
+        </div>
+        <div>
           <label style={styles.label}>Filter by</label>
           <select value={filter} onChange={e => { setFilter(e.target.value); setFilterValue('') }} style={styles.select}>
             <option value="">All applicants</option>
@@ -150,8 +180,8 @@ export default function AdminPage() {
           <label style={styles.label}>To date</label>
           <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={styles.input} />
         </div>
-        {(filter || dateFrom || dateTo) && (
-          <button onClick={() => { setFilter(''); setFilterValue(''); setDateFrom(''); setDateTo('') }}
+        {(filter || dateFrom || dateTo || searchText) && (
+          <button onClick={() => { setFilter(''); setFilterValue(''); setDateFrom(''); setDateTo(''); setSearchText('') }}
             style={{ ...styles.secondaryBtn, alignSelf: 'flex-end' }}>Clear filters</button>
         )}
       </div>
