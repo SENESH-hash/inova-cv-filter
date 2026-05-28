@@ -1,25 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import Anthropic from '@anthropic-ai/sdk'
+import Groq from 'groq-sdk'
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 
 async function extractCVData(pdfBuffer: Buffer) {
   try {
     const base64PDF = pdfBuffer.toString('base64')
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+    const response = await groq.chat.completions.create({
+      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
       max_tokens: 1500,
-      messages: [{
-        role: 'user',
-        content: [
-          {
-            type: 'document',
-            source: { type: 'base64', media_type: 'application/pdf', data: base64PDF }
-          },
-          {
-            type: 'text',
-            text: `Extract information from this CV and return ONLY a JSON object. No extra text.
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: `Extract information from this CV (provided as base64 PDF: ${base64PDF.substring(0, 100)}...) and return ONLY a JSON object. No extra text.
 {
   "years_experience": number or null,
   "location": "city, country" or null,
@@ -32,11 +29,12 @@ async function extractCVData(pdfBuffer: Buffer) {
   "certifications": ["cert1"],
   "summary": "2 sentence summary"
 }`
-          }
-        ]
-      }]
+            }
+          ]
+        }
+      ]
     })
-    const text = response.content[0].type === 'text' ? response.content[0].text : ''
+    const text = response.choices[0]?.message?.content || ''
     const jsonMatch = text.match(/\{[\s\S]*\}/)
     if (jsonMatch) return JSON.parse(jsonMatch[0])
     return {}
@@ -63,7 +61,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // Duplicate check
     const { data: existing } = await supabaseAdmin
       .from('applicants')
       .select('id')
@@ -74,7 +71,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'An application with this email already exists.' }, { status: 409 })
     }
 
-    // Upload CV to Supabase Storage
     const fileBuffer = Buffer.from(await cvFile.arrayBuffer())
     const fileKey = `${Date.now()}-${email.replace('@', '_at_')}.pdf`
 
@@ -88,10 +84,8 @@ export async function POST(req: NextRequest) {
       .from('cv-uploads')
       .getPublicUrl(fileKey)
 
-    // Extract CV data with Claude
     const extractedData = await extractCVData(fileBuffer)
 
-    // Save to Supabase
     const { error } = await supabaseAdmin.from('applicants').insert({
       full_name: fullName,
       email,
