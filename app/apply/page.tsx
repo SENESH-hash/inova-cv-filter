@@ -10,7 +10,7 @@ export default function ApplyPage() {
   const [form, setForm] = useState({
     full_name: '', email: '', phone: '', linkedin_url: '', portfolio_url: '',
     experience_years: '', experience_months: '', domain_experience: '',
-    professional_qualifications: '', referral_source: '', referral_name: '',
+    professional_qualifications: '',
   })
   const [techHighlights, setTechHighlights] = useState([
     { tech: '', years: '' }, { tech: '', years: '' }, { tech: '', years: '' }
