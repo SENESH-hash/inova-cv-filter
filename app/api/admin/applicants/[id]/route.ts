@@ -20,3 +20,26 @@ export async function PATCH(
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ success: true })
 }
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  if (!verifyToken(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { id } = await params
+
+  const { data: applicant } = await supabaseAdmin
+    .from('applicants').select('cv_file_url').eq('id', id).single()
+
+  if (applicant?.cv_file_url) {
+    const url = applicant.cv_file_url
+    const fileKey = url.split('/cv-uploads/')[1]
+    if (fileKey) {
+      await supabaseAdmin.storage.from('cv-uploads').remove([fileKey])
+    }
+  }
+
+  const { error } = await supabaseAdmin.from('applicants').delete().eq('id', id)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ success: true })
+}

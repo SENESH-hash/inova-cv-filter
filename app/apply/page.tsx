@@ -1,28 +1,68 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+
+const REFERRAL_OPTIONS = ['Social Networks', 'Company Website', 'Referrals and Networking', 'LinkedIn Jobs Section']
 
 export default function ApplyPage() {
+  const [roles, setRoles] = useState<{id: string, title: string}[]>([])
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([])
+  const [customRole, setCustomRole] = useState('')
   const [form, setForm] = useState({
-    full_name: '', email: '', phone: '', linkedin_url: '',
-    portfolio_url: '', desired_role: '', referral_name: '', referral_email: ''
+    full_name: '', email: '', phone: '', linkedin_url: '', portfolio_url: '',
+    experience_years: '', experience_months: '', domain_experience: '',
+    professional_qualifications: '', referral_source: '', referral_name: '',
+  })
+  const [techHighlights, setTechHighlights] = useState([
+    { tech: '', years: '' }, { tech: '', years: '' }, { tech: '', years: '' }
+  ])
+  const [keySkills, setKeySkills] = useState({
+    languages: '', frameworks: '', databases: '', other: ''
   })
   const [file, setFile] = useState<File | null>(null)
+  const [referralSource, setReferralSource] = useState('')
+  const [referralName, setReferralName] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
+
+  useEffect(() => {
+    fetch('/api/admin/roles').then(r => r.json()).then(data => {
+      if (Array.isArray(data)) setRoles(data)
+    })
+  }, [])
 
   const handle = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm(f => ({ ...f, [e.target.name]: e.target.value }))
 
+  const toggleRole = (title: string) => {
+    setSelectedRoles(prev =>
+      prev.includes(title) ? prev.filter(r => r !== title) : [...prev, title]
+    )
+  }
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!file) { setErrorMsg('Please upload your CV.'); setStatus('error'); return }
+    if (selectedRoles.length === 0 && !customRole.trim()) {
+      setErrorMsg('Please select or enter at least one role.'); setStatus('error'); return
+    }
+    if (!form.linkedin_url.trim()) {
+      setErrorMsg('LinkedIn URL is required.'); setStatus('error'); return
+    }
     setStatus('loading')
+
     const fd = new FormData()
     Object.entries(form).forEach(([k, v]) => fd.append(k, v))
+    const allRoles = [...selectedRoles, ...(customRole.trim() ? [customRole.trim()] : [])]
+    fd.append('selected_roles', JSON.stringify(allRoles))
+    fd.append('tech_highlights', JSON.stringify(techHighlights))
+    fd.append('key_skills', JSON.stringify(keySkills))
+    fd.append('referral_source', referralSource)
+    fd.append('referral_name', referralName)
     fd.append('cv_file', file)
+
     const res = await fetch('/api/submit', { method: 'POST', body: fd })
     const data = await res.json()
-    if (res.ok) { setStatus('success') }
+    if (res.ok) setStatus('success')
     else { setErrorMsg(data.error || 'Something went wrong.'); setStatus('error') }
   }
 
@@ -43,45 +83,142 @@ export default function ApplyPage() {
           <h1 style={{ margin: '0 0 6px', fontSize: 24, color: '#1a1a1a' }}>Inova IT Systems (Pvt) Ltd</h1>
           <p style={{ margin: 0, color: '#666', fontSize: 15 }}>Submit your CV — we'll be in touch if there's a match.</p>
         </div>
+
         <form onSubmit={submit}>
+          {/* Basic Info */}
           <div style={styles.grid2}>
             <Field label="Full Name *" name="full_name" value={form.full_name} onChange={handle} required />
             <Field label="Email Address *" name="email" type="email" value={form.email} onChange={handle} required />
           </div>
           <div style={styles.grid2}>
             <Field label="Phone Number" name="phone" value={form.phone} onChange={handle} />
-            <Field label="Role You're Applying For *" name="desired_role" value={form.desired_role} onChange={handle} required placeholder="e.g. Senior React Developer" />
+            <Field label="LinkedIn Profile URL *" name="linkedin_url" value={form.linkedin_url} onChange={handle} required placeholder="https://linkedin.com/in/..." />
           </div>
-          <div style={styles.grid2}>
-            <Field label="LinkedIn Profile URL" name="linkedin_url" value={form.linkedin_url} onChange={handle} placeholder="https://linkedin.com/in/..." />
-            <Field label="Portfolio / GitHub URL" name="portfolio_url" value={form.portfolio_url} onChange={handle} placeholder="https://github.com/..." />
-          </div>
+          <Field label="Portfolio / GitHub URL (Optional)" name="portfolio_url" value={form.portfolio_url} onChange={handle} placeholder="https://github.com/..." />
+
+          {/* Roles */}
           <div style={{ marginBottom: 20 }}>
-            <label style={styles.label}>Upload CV (PDF only, max 5MB) *</label>
+            <label style={styles.label}>Role(s) You're Applying For *</label>
+            {roles.length > 0 ? (
+              <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 8, marginBottom: 10 }}>
+                {roles.map(r => (
+                  <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', border: `1.5px solid ${selectedRoles.includes(r.title) ? '#0f6e56' : '#ddd'}`, borderRadius: 20, cursor: 'pointer', background: selectedRoles.includes(r.title) ? '#e8f5f1' : '#fff', fontSize: 14 }}>
+                    <input type="checkbox" checked={selectedRoles.includes(r.title)} onChange={() => toggleRole(r.title)} style={{ display: 'none' }} />
+                    {selectedRoles.includes(r.title) ? '✓ ' : ''}{r.title}
+                  </label>
+                ))}
+              </div>
+            ) : (
+              <p style={{ fontSize: 13, color: '#888', marginBottom: 8 }}>No roles posted yet — please type your preferred role below.</p>
+            )}
+            <input placeholder="Or type your preferred role..." value={customRole} onChange={e => setCustomRole(e.target.value)}
+              style={{ ...styles.input, width: '100%', boxSizing: 'border-box' as const }} />
+          </div>
+
+          {/* CV Upload */}
+          <div style={{ marginBottom: 20 }}>
+            <label style={styles.label}>Upload CV (PDF or Word, max 5MB) *</label>
             <div style={styles.fileBox} onClick={() => document.getElementById('cv-input')?.click()}>
-              <input id="cv-input" type="file" accept=".pdf" style={{ display: 'none' }}
+              <input id="cv-input" type="file" accept=".pdf,.doc,.docx" style={{ display: 'none' }}
                 onChange={e => setFile(e.target.files?.[0] || null)} />
               {file ? (
                 <span style={{ color: '#0f6e56', fontWeight: 500 }}>📄 {file.name}</span>
               ) : (
-                <span style={{ color: '#999' }}>Click to browse or drag & drop your PDF here</span>
+                <span style={{ color: '#999' }}>Click to browse or drag & drop (PDF or Word)</span>
               )}
             </div>
           </div>
-          <div style={{ background: '#f8f8f8', borderRadius: 10, padding: '16px 18px', marginBottom: 20 }}>
-            <p style={{ margin: '0 0 12px', fontSize: 14, color: '#555' }}>
-              <strong>Referred by a current Inova employee?</strong> (Optional)
-            </p>
-            <div style={styles.grid2}>
-              <Field label="Their Full Name" name="referral_name" value={form.referral_name} onChange={handle} />
-              <Field label="Their Work Email" name="referral_email" type="email" value={form.referral_email} onChange={handle} />
+
+          {/* Experience */}
+          <div style={{ marginBottom: 20 }}>
+            <label style={styles.label}>Total Years of Experience *</label>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <input name="experience_years" type="number" min="0" max="50" placeholder="Years" value={form.experience_years}
+                  onChange={handle} style={{ ...styles.input, width: '100%', boxSizing: 'border-box' as const }} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <input name="experience_months" type="number" min="0" max="11" placeholder="Months" value={form.experience_months}
+                  onChange={handle} style={{ ...styles.input, width: '100%', boxSizing: 'border-box' as const }} />
+              </div>
             </div>
           </div>
+
+          {/* Technology Highlights */}
+          <div style={{ marginBottom: 20 }}>
+            <label style={styles.label}>Technology Highlights</label>
+            <p style={{ fontSize: 12, color: '#888', margin: '0 0 8px' }}>Enter your main technologies and how many years you've used each</p>
+            {techHighlights.map((t, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                <input placeholder="Technology (e.g. React JS)" value={t.tech}
+                  onChange={e => setTechHighlights(prev => prev.map((x, j) => j === i ? { ...x, tech: e.target.value } : x))}
+                  style={{ ...styles.input, flex: 2 }} />
+                <input placeholder="Years" type="number" min="0" value={t.years}
+                  onChange={e => setTechHighlights(prev => prev.map((x, j) => j === i ? { ...x, years: e.target.value } : x))}
+                  style={{ ...styles.input, flex: 1 }} />
+                {i === techHighlights.length - 1 && (
+                  <button type="button" onClick={() => setTechHighlights(prev => [...prev, { tech: '', years: '' }])}
+                    style={{ padding: '8px 12px', background: '#0f6e56', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}>+</button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Domain Experience */}
+          <div style={{ marginBottom: 20 }}>
+            <label style={styles.label}>Domain Experience</label>
+            <input name="domain_experience" placeholder="e.g. Banking & Finance, Healthcare, E-commerce"
+              value={form.domain_experience} onChange={handle}
+              style={{ ...styles.input, width: '100%', boxSizing: 'border-box' as const }} />
+          </div>
+
+          {/* Key Skills */}
+          <div style={{ marginBottom: 20 }}>
+            <label style={styles.label}>Key Skills</label>
+            {(['languages', 'frameworks', 'databases', 'other'] as const).map(cat => (
+              <div key={cat} style={{ marginBottom: 10 }}>
+                <label style={{ fontSize: 13, color: '#555', fontWeight: 500, textTransform: 'capitalize' as const, display: 'block', marginBottom: 4 }}>{cat}</label>
+                <input placeholder={`Enter ${cat}...`} value={keySkills[cat]}
+                  onChange={e => setKeySkills(prev => ({ ...prev, [cat]: e.target.value }))}
+                  style={{ ...styles.input, width: '100%', boxSizing: 'border-box' as const }} />
+              </div>
+            ))}
+          </div>
+
+          {/* Professional Qualifications */}
+          <div style={{ marginBottom: 20 }}>
+            <label style={styles.label}>Professional Qualifications & Experience</label>
+            <p style={{ fontSize: 12, color: '#888', margin: '0 0 8px' }}>Include your education, certifications, and work experience details</p>
+            <textarea name="professional_qualifications" value={form.professional_qualifications} onChange={handle}
+              placeholder="Education:&#10;BSc (Hons) Software Engineering - University of Plymouth (2023)&#10;&#10;Certifications:&#10;OOP JAVA - JAVA Institute&#10;&#10;Experience:&#10;Software Engineer - Inova IT Systems (2023-Present)&#10;- Led front-end development..."
+              style={{ width: '100%', minHeight: 200, padding: '10px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, resize: 'vertical' as const, boxSizing: 'border-box' as const, fontFamily: 'inherit', lineHeight: 1.6 }} />
+          </div>
+
+          {/* Referral */}
+          <div style={{ marginBottom: 20 }}>
+            <label style={styles.label}>How did you hear about us?</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 8, marginBottom: referralSource === 'Referrals and Networking' ? 10 : 0 }}>
+              {REFERRAL_OPTIONS.map(opt => (
+                <button key={opt} type="button"
+                  onClick={() => setReferralSource(referralSource === opt ? '' : opt)}
+                  style={{ padding: '7px 14px', borderRadius: 20, border: `1.5px solid ${referralSource === opt ? '#0f6e56' : '#ddd'}`, background: referralSource === opt ? '#e8f5f1' : '#fff', color: referralSource === opt ? '#0f6e56' : '#555', fontSize: 13, cursor: 'pointer', fontWeight: referralSource === opt ? 600 : 400 }}>
+                  {opt}
+                </button>
+              ))}
+            </div>
+            {referralSource === 'Referrals and Networking' && (
+              <input placeholder="Enter the person's name who referred you" value={referralName}
+                onChange={e => setReferralName(e.target.value)}
+                style={{ ...styles.input, width: '100%', boxSizing: 'border-box' as const, marginTop: 8 }} />
+            )}
+          </div>
+
           {status === 'error' && (
             <div style={{ background: '#fff0f0', border: '1px solid #fcc', borderRadius: 8, padding: '10px 14px', marginBottom: 16, color: '#c00', fontSize: 14 }}>
               {errorMsg}
             </div>
           )}
+
           <button type="submit" disabled={status === 'loading'} style={styles.btn}>
             {status === 'loading' ? 'Submitting...' : 'Submit Application →'}
           </button>
@@ -94,19 +231,19 @@ export default function ApplyPage() {
 function Field({ label, name, value, onChange, type = 'text', required = false, placeholder = '' }: any) {
   return (
     <div style={{ marginBottom: 16 }}>
-      <label style={styles.label}>{label}</label>
+      <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#444', marginBottom: 6 }}>{label}</label>
       <input name={name} type={type} value={value} onChange={onChange} required={required}
-        placeholder={placeholder} style={styles.input} />
+        placeholder={placeholder} style={{ width: '100%', padding: '9px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, outline: 'none', boxSizing: 'border-box' as const }} />
     </div>
   )
 }
 
 const styles: Record<string, React.CSSProperties> = {
   page: { minHeight: '100vh', background: '#f5f5f5', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 16px' },
-  card: { background: '#fff', borderRadius: 14, padding: '36px 40px', width: '100%', maxWidth: 680, boxShadow: '0 2px 20px rgba(0,0,0,0.07)' },
+  card: { background: '#fff', borderRadius: 14, padding: '36px 40px', width: '100%', maxWidth: 700, boxShadow: '0 2px 20px rgba(0,0,0,0.07)' },
   grid2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 },
   label: { display: 'block', fontSize: 13, fontWeight: 500, color: '#444', marginBottom: 6 },
-  input: { width: '100%', padding: '9px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, outline: 'none', boxSizing: 'border-box' as const },
+  input: { padding: '9px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, outline: 'none' },
   fileBox: { border: '2px dashed #ddd', borderRadius: 10, padding: '24px', textAlign: 'center' as const, cursor: 'pointer', background: '#fafafa' },
   btn: { width: '100%', padding: '13px', background: '#0f6e56', color: '#fff', border: 'none', borderRadius: 10, fontSize: 16, fontWeight: 600, cursor: 'pointer' },
 }
