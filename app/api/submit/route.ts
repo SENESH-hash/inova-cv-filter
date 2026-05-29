@@ -3,9 +3,6 @@ import { supabaseAdmin } from '@/lib/supabase'
 import Groq from 'groq-sdk'
 import * as pdfParse from 'pdf-parse'
 
-// Increase Vercel function timeout (upgrade to Pro for full 60s benefit)
-export const maxDuration = 60
-
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 
 async function extractCVData(fileBuffer: Buffer, fileType: string) {
@@ -75,11 +72,8 @@ export async function POST(req: NextRequest) {
     const fileExt = fileType === 'pdf' ? 'pdf' : 'docx'
     const fileKey = `${Date.now()}-${email.replace('@', '_at_')}.${fileExt}`
 
-    const contentType = fileType === 'pdf'
-      ? 'application/pdf'
-      : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    const contentType = fileType === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
-    // Step 1: Upload CV file to Supabase Storage
     const { error: uploadError } = await supabaseAdmin.storage
       .from('cv-uploads').upload(fileKey, fileBuffer, { contentType })
     if (uploadError) throw uploadError
@@ -87,57 +81,31 @@ export async function POST(req: NextRequest) {
     const { data: { publicUrl } } = supabaseAdmin.storage
       .from('cv-uploads').getPublicUrl(fileKey)
 
-    // Step 2: Insert applicant immediately with empty extracted_data
-    // This avoids Vercel's 10s timeout caused by waiting for Groq AI
-    const { data: newApplicant, error: insertError } = await supabaseAdmin
-      .from('applicants')
-      .insert({
-        full_name: fullName,
-        email,
-        phone,
-        linkedin_url: linkedinUrl,
-        portfolio_url: portfolioUrl,
-        desired_role: selectedRoles.join(', '),
-        selected_roles: selectedRoles,
-        cv_file_url: publicUrl,
-        cv_file_type: fileType,
-        referral_source: referralSource || null,
-        referral_name: referralName || null,
-        experience_years: experienceYears ? parseInt(experienceYears) : null,
-        experience_months: experienceMonths ? parseInt(experienceMonths) : null,
-        technology_highlights: techHighlights,
-        domain_experience: domainExperience || null,
-        key_skills: keySkills,
-        professional_qualifications: professionalQualifications || null,
-        extracted_data: {}, // AI data will be filled in the background
-      })
-      .select('id')
-      .single()
+    const extractedData = await extractCVData(fileBuffer, fileType)
 
-    if (insertError) throw insertError
+    const { error } = await supabaseAdmin.from('applicants').insert({
+      full_name: fullName,
+      email,
+      phone,
+      linkedin_url: linkedinUrl,
+      portfolio_url: portfolioUrl,
+      desired_role: selectedRoles.join(', '),
+      selected_roles: selectedRoles,
+      cv_file_url: publicUrl,
+      cv_file_type: fileType,
+      referral_source: referralSource || null,
+      referral_name: referralName || null,
+      experience_years: experienceYears ? parseInt(experienceYears) : null,
+      experience_months: experienceMonths ? parseInt(experienceMonths) : null,
+      technology_highlights: techHighlights,
+      domain_experience: domainExperience || null,
+      key_skills: keySkills,
+      professional_qualifications: professionalQualifications || null,
+      extracted_data: extractedData,
+    })
 
-    // Step 3: Fire-and-forget AI extraction — runs in background, won't block response
-    // The extracted_data column will be updated once Groq finishes processing
-    extractCVData(fileBuffer, fileType)
-      .then(async (extractedData) => {
-        const { error: updateError } = await supabaseAdmin
-          .from('applicants')
-          .update({ extracted_data: extractedData })
-          .eq('id', newApplicant.id)
-
-        if (updateError) {
-          console.error('Failed to update extracted_data:', updateError)
-        } else {
-          console.log(`AI extraction complete for applicant ${newApplicant.id}`)
-        }
-      })
-      .catch((err) => {
-        console.error('Background AI extraction error:', err)
-      })
-
-    // Step 4: Return success immediately — don't wait for AI
+    if (error) throw error
     return NextResponse.json({ success: true })
-
   } catch (e: any) {
     console.error(e)
     return NextResponse.json({ error: e.message || 'Submission failed' }, { status: 500 })
