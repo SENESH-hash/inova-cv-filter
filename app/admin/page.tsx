@@ -17,6 +17,9 @@ export default function AdminPage() {
   const [selected, setSelected] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [searchText, setSearchText] = useState('')
+  const [roles, setRoles] = useState<{id: string, title: string}[]>([])
+  const [newRole, setNewRole] = useState('')
+  const [showRoleManager, setShowRoleManager] = useState(false)
 
   useEffect(() => {
     const t = localStorage.getItem('admin_token')
@@ -34,6 +37,12 @@ export default function AdminPage() {
     else setLoginError(data.error)
   }
 
+  const fetchRoles = useCallback(async () => {
+    const res = await fetch('/api/admin/roles')
+    const data = await res.json()
+    if (Array.isArray(data)) setRoles(data)
+  }, [])
+
   const fetchApplicants = useCallback(async () => {
     if (!token) return
     setLoading(true)
@@ -44,7 +53,6 @@ export default function AdminPage() {
     const res = await fetch(`/api/admin/applicants?${params}`, { headers: { Authorization: `Bearer ${token}` } })
     if (res.status === 401) { localStorage.removeItem('admin_token'); setToken(null); return }
     let data = await res.json()
-
     if (searchText.trim()) {
       const s = searchText.toLowerCase()
       data = data.filter((a: any) => {
@@ -54,6 +62,8 @@ export default function AdminPage() {
           a.email?.toLowerCase().includes(s) ||
           a.desired_role?.toLowerCase().includes(s) ||
           a.status?.toLowerCase().includes(s) ||
+          a.domain_experience?.toLowerCase().includes(s) ||
+          a.professional_qualifications?.toLowerCase().includes(s) ||
           ed.location?.toLowerCase().includes(s) ||
           ed.degree_level?.toLowerCase().includes(s) ||
           ed.field_of_study?.toLowerCase().includes(s) ||
@@ -62,16 +72,42 @@ export default function AdminPage() {
           ed.skills?.some((sk: string) => sk.toLowerCase().includes(s)) ||
           ed.methodologies?.some((m: string) => m.toLowerCase().includes(s)) ||
           ed.past_job_titles?.some((t: string) => t.toLowerCase().includes(s)) ||
-          ed.certifications?.some((c: string) => c.toLowerCase().includes(s))
+          a.selected_roles?.some((r: string) => r.toLowerCase().includes(s)) ||
+          a.technology_highlights?.some((t: any) => t.tech?.toLowerCase().includes(s))
         )
       })
     }
-
     setApplicants(data)
     setLoading(false)
   }, [token, filter, filterValue, dateFrom, dateTo, searchText])
 
-  useEffect(() => { if (token) fetchApplicants() }, [token, fetchApplicants])
+  useEffect(() => { if (token) { fetchApplicants(); fetchRoles() } }, [token, fetchApplicants, fetchRoles])
+
+  const addRole = async () => {
+    if (!newRole.trim()) return
+    const res = await fetch('/api/admin/roles', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ title: newRole.trim() })
+    })
+    if (res.ok) { setNewRole(''); fetchRoles() }
+  }
+
+  const deleteRole = async (id: string) => {
+    await fetch('/api/admin/roles', {
+      method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ id })
+    })
+    fetchRoles()
+  }
+
+  const deleteApplicant = async (id: string) => {
+    if (!confirm('Are you sure you want to permanently delete this applicant?')) return
+    await fetch(`/api/admin/applicants/${id}`, {
+      method: 'DELETE', headers: { Authorization: `Bearer ${token}` }
+    })
+    setApplicants(prev => prev.filter(a => a.id !== id))
+    setSelected(null)
+  }
 
   const updateApplicant = async (id: string, updates: any) => {
     await fetch(`/api/admin/applicants/${id}`, {
@@ -82,24 +118,93 @@ export default function AdminPage() {
     if (selected?.id === id) setSelected((s: any) => ({ ...s, ...updates }))
   }
 
+  const downloadInovaCV = (applicant: any) => {
+    const a = applicant
+    const ed = a.extracted_data || {}
+    const techRows = (a.technology_highlights || [])
+      .filter((t: any) => t.tech)
+      .map((t: any) => `<tr><td style="padding:4px 8px;border:1px solid #ddd;">${t.tech}</td><td style="padding:4px 8px;border:1px solid #ddd;text-align:center">${t.years || '-'}Y</td></tr>`)
+      .join('')
+
+    const ks = a.key_skills || {}
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<style>
+  body { font-family: Arial, sans-serif; font-size: 13px; margin: 40px; color: #222; }
+  h1 { text-align: center; font-size: 22px; margin-bottom: 4px; text-transform: uppercase; }
+  .email { text-align: center; color: #c00; margin-bottom: 20px; }
+  h2 { font-size: 14px; border-bottom: 2px solid #222; padding-bottom: 4px; margin-top: 20px; text-transform: uppercase; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+  td, th { padding: 5px 8px; border: 1px solid #ddd; font-size: 12px; }
+  th { background: #f5f5f5; font-weight: bold; }
+  ul { margin: 4px 0; padding-left: 20px; }
+  li { margin-bottom: 2px; }
+  .section { margin-bottom: 16px; }
+  pre { white-space: pre-wrap; font-family: Arial; font-size: 12px; margin: 0; }
+</style>
+</head>
+<body>
+<img src="https://inovait.lk/wp-content/uploads/2023/01/inova-logo.png" style="height:50px;display:block;margin:0 auto 10px" onerror="this.style.display='none'"/>
+<h1>${a.full_name || ''}</h1>
+<div class="email">${a.email || ''}</div>
+
+<h2>Skills Summary</h2>
+<table>
+  <tr><th>Total Years of Experience</th><td>${a.experience_years || 0}Y ${a.experience_months || 0}M</td><td></td><td></td></tr>
+  <tr><th rowspan="${Math.max((a.technology_highlights || []).filter((t:any)=>t.tech).length,1)}">Technology Highlights</th>
+  ${techRows ? techRows.replace('<tr>', '').split('</tr>')[0] + '</tr>' : '<td colspan="3">-</td></tr>'}
+</table>
+${techRows.split('</tr>').slice(1).filter(Boolean).map((r:string) => `<table><tr><td style="width:200px;border:none"></td>${r}</tr></table>`).join('')}
+<table>
+  <tr><th>Domain Experience</th><td colspan="3">${a.domain_experience || ed.summary || '-'}</td></tr>
+</table>
+
+<h2>Key Skills</h2>
+<table>
+  ${ks.languages ? `<tr><th>Languages</th><td>${ks.languages}</td></tr>` : ''}
+  ${ks.frameworks ? `<tr><th>Frameworks</th><td>${ks.frameworks}</td></tr>` : ''}
+  ${ks.databases ? `<tr><th>Databases</th><td>${ks.databases}</td></tr>` : ''}
+  ${ks.other ? `<tr><th>Other</th><td>${ks.other}</td></tr>` : ''}
+</table>
+
+<h2>Professional Qualifications & Experience</h2>
+<div class="section"><pre>${a.professional_qualifications || '-'}</pre></div>
+
+<h2>Contact</h2>
+<table>
+  <tr><th>Phone</th><td>${a.phone || '-'}</td><th>LinkedIn</th><td>${a.linkedin_url || '-'}</td></tr>
+  <tr><th>Portfolio</th><td colspan="3">${a.portfolio_url || '-'}</td></tr>
+</table>
+</body></html>`
+
+    const blob = new Blob([html], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${a.full_name?.replace(/ /g, '_')}_Inova_CV.html`
+    link.click()
+  }
+
   const exportCSV = () => {
-    const headers = ['Name', 'Email', 'Phone', 'Role', 'Status', 'Experience (yrs)', 'Location', 'Skills', 'Degree', 'Submitted']
+    const headers = ['Name', 'Email', 'Phone', 'Role', 'Status', 'Experience', 'Location', 'Skills', 'Degree', 'Submitted']
     const rows = applicants.map(a => {
       const ed = a.extracted_data || {}
       return [a.full_name, a.email, a.phone || '', a.desired_role, a.status,
-        ed.years_experience || '', ed.location || '',
-        (ed.skills || []).join('; '), ed.degree_level || '',
+        `${a.experience_years || 0}Y ${a.experience_months || 0}M`,
+        ed.location || '', (ed.skills || []).join('; '), ed.degree_level || '',
         new Date(a.submitted_at).toLocaleDateString()]
     })
     const csv = [headers, ...rows].map(r => r.map((v: string) => `"${v}"`).join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
-    const a = document.createElement('a'); a.href = url; a.download = 'applicants.csv'; a.click()
+    const link = document.createElement('a'); link.href = url; link.download = 'applicants.csv'; link.click()
   }
 
   if (!token) return (
     <div style={styles.page}>
-      <div style={{ ...styles.card, maxWidth: 380 }}>
+      <div style={{ ...styles.card, maxWidth: 380, cursor: 'default' }}>
         <h2 style={{ margin: '0 0 6px' }}>Inova IT — Admin</h2>
         <p style={{ color: '#666', margin: '0 0 24px', fontSize: 14 }}>Sign in to access the dashboard</p>
         <form onSubmit={login}>
@@ -116,19 +221,46 @@ export default function AdminPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
+      {/* Header */}
       <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '14px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>Inova IT — CV Dashboard</h1>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <span style={{ fontSize: 13, color: '#888' }}>{applicants.length} applicant{applicants.length !== 1 ? 's' : ''}</span>
+          <button onClick={() => setShowRoleManager(!showRoleManager)} style={{ ...styles.secondaryBtn, background: showRoleManager ? '#f0f9f6' : 'transparent', color: '#0f6e56', borderColor: '#0f6e56' }}>⚙ Manage Roles</button>
           <button onClick={exportCSV} style={styles.secondaryBtn}>Export CSV</button>
           <button onClick={() => { localStorage.removeItem('admin_token'); setToken(null) }} style={{ ...styles.secondaryBtn, color: '#c00' }}>Sign Out</button>
         </div>
       </div>
+
+      {/* Role Manager */}
+      {showRoleManager && (
+        <div style={{ background: '#f0f9f6', borderBottom: '1px solid #c8e6dc', padding: '16px 28px' }}>
+          <p style={{ margin: '0 0 10px', fontWeight: 600, fontSize: 14, color: '#0f6e56' }}>Manage Job Roles (these appear as checkboxes on the apply form)</p>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const, marginBottom: 12 }}>
+            {roles.map(r => (
+              <span key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px', background: '#fff', border: '1px solid #0f6e56', borderRadius: 20, fontSize: 13 }}>
+                {r.title}
+                <button onClick={() => deleteRole(r.id)} style={{ border: 'none', background: 'none', color: '#c00', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 0 }}>×</button>
+              </span>
+            ))}
+            {roles.length === 0 && <span style={{ fontSize: 13, color: '#888' }}>No roles added yet.</span>}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input value={newRole} onChange={e => setNewRole(e.target.value)}
+              placeholder="Add new role (e.g. Senior React Developer)"
+              onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addRole())}
+              style={{ ...styles.input, flex: 1 }} />
+            <button onClick={addRole} style={styles.btn}>Add Role</button>
+          </div>
+        </div>
+      )}
+
+      {/* Filters */}
       <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '14px 28px', display: 'flex', gap: 12, flexWrap: 'wrap' as const, alignItems: 'flex-end' }}>
         <div>
           <label style={styles.label}>🔍 Search anything</label>
           <input value={searchText} onChange={e => setSearchText(e.target.value)}
-            placeholder="e.g. React, Colombo, MBA, Agile..."
+            placeholder="e.g. React, Colombo, MBA..."
             style={{ ...styles.input, width: 240 }} />
         </div>
         <div>
@@ -185,6 +317,8 @@ export default function AdminPage() {
             style={{ ...styles.secondaryBtn, alignSelf: 'flex-end' }}>Clear filters</button>
         )}
       </div>
+
+      {/* Cards */}
       <div style={{ padding: '24px 28px' }}>
         {loading ? (
           <p style={{ color: '#888', textAlign: 'center' as const, marginTop: 60 }}>Loading applicants…</p>
@@ -192,21 +326,23 @@ export default function AdminPage() {
           <p style={{ color: '#888', textAlign: 'center' as const, marginTop: 60 }}>No applicants found.</p>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
-            {applicants.map(a => <ApplicantCard key={a.id} applicant={a} onSelect={setSelected} onUpdate={updateApplicant} />)}
+            {applicants.map(a => <ApplicantCard key={a.id} applicant={a} onSelect={setSelected} onUpdate={updateApplicant} onDelete={deleteApplicant} />)}
           </div>
         )}
       </div>
+
+      {/* Detail Modal */}
       {selected && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999, padding: 24 }}
           onClick={e => e.target === e.currentTarget && setSelected(null)}>
-          <ApplicantDetail applicant={selected} onClose={() => setSelected(null)} onUpdate={updateApplicant} />
+          <ApplicantDetail applicant={selected} onClose={() => setSelected(null)} onUpdate={updateApplicant} onDelete={deleteApplicant} onDownloadInova={downloadInovaCV} />
         </div>
       )}
     </div>
   )
 }
 
-function ApplicantCard({ applicant: a, onSelect, onUpdate }: any) {
+function ApplicantCard({ applicant: a, onSelect, onUpdate, onDelete }: any) {
   const ed = a.extracted_data || {}
   return (
     <div style={styles.card} onClick={() => onSelect(a)}>
@@ -220,25 +356,36 @@ function ApplicantCard({ applicant: a, onSelect, onUpdate }: any) {
       <div style={{ fontSize: 13, color: '#555', marginBottom: 8 }}>
         <div>📧 {a.email}</div>
         {ed.location && <div>📍 {ed.location}</div>}
-        {ed.years_experience != null && <div>⏱ {ed.years_experience} yrs experience</div>}
+        {(a.experience_years != null || a.experience_months != null) && <div>⏱ {a.experience_years || 0}Y {a.experience_months || 0}M experience</div>}
         {ed.degree_level && <div>🎓 {ed.degree_level}{ed.field_of_study ? ` · ${ed.field_of_study}` : ''}</div>}
       </div>
+      {a.selected_roles?.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4, marginBottom: 6 }}>
+          {a.selected_roles.slice(0, 2).map((r: string) => (
+            <span key={r} style={{ background: '#e8f5f1', borderRadius: 4, padding: '2px 7px', fontSize: 11, color: '#0f6e56' }}>{r}</span>
+          ))}
+        </div>
+      )}
       {ed.skills?.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4 }}>
-          {ed.skills.slice(0, 5).map((s: string) => (
+          {ed.skills.slice(0, 4).map((s: string) => (
             <span key={s} style={{ background: '#f0f0f0', borderRadius: 4, padding: '2px 7px', fontSize: 11, color: '#444' }}>{s}</span>
           ))}
-          {ed.skills.length > 5 && <span style={{ fontSize: 11, color: '#999' }}>+{ed.skills.length - 5} more</span>}
+          {ed.skills.length > 4 && <span style={{ fontSize: 11, color: '#999' }}>+{ed.skills.length - 4} more</span>}
         </div>
       )}
       <div style={{ marginTop: 10, fontSize: 12, color: '#bbb' }}>{new Date(a.submitted_at).toLocaleDateString()}</div>
-      {a.referral_name && <div style={{ marginTop: 6, fontSize: 12, color: '#888', background: '#fffbe6', borderRadius: 5, padding: '4px 8px' }}>👥 Referred by {a.referral_name}</div>}
+      {a.referral_source && <div style={{ marginTop: 6, fontSize: 12, color: '#888', background: '#fffbe6', borderRadius: 5, padding: '4px 8px' }}>👥 Via {a.referral_source}{a.referral_name ? ` (${a.referral_name})` : ''}</div>}
+      <div style={{ marginTop: 10, display: 'flex', gap: 6 }} onClick={e => e.stopPropagation()}>
+        <button onClick={() => onDelete(a.id)} style={{ flex: 1, padding: '5px', background: '#fff0f0', border: '1px solid #fcc', borderRadius: 6, fontSize: 12, color: '#c00', cursor: 'pointer' }}>🗑 Delete</button>
+      </div>
     </div>
   )
 }
 
-function ApplicantDetail({ applicant: a, onClose, onUpdate }: any) {
+function ApplicantDetail({ applicant: a, onClose, onUpdate, onDelete, onDownloadInova }: any) {
   const ed = a.extracted_data || {}
+  const ks = a.key_skills || {}
   const [notes, setNotes] = useState(a.admin_notes || '')
   const [saving, setSaving] = useState(false)
 
@@ -249,7 +396,7 @@ function ApplicantDetail({ applicant: a, onClose, onUpdate }: any) {
   }
 
   return (
-    <div style={{ background: '#fff', borderRadius: 14, width: '100%', maxWidth: 640, maxHeight: '88vh', overflowY: 'auto' as const, padding: 32 }}>
+    <div style={{ background: '#fff', borderRadius: 14, width: '100%', maxWidth: 680, maxHeight: '90vh', overflowY: 'auto' as const, padding: 32 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
           <h2 style={{ margin: 0 }}>{a.full_name}</h2>
@@ -257,6 +404,8 @@ function ApplicantDetail({ applicant: a, onClose, onUpdate }: any) {
         </div>
         <button onClick={onClose} style={{ border: 'none', background: 'none', fontSize: 22, cursor: 'pointer', color: '#999' }}>×</button>
       </div>
+
+      {/* Status */}
       <div style={{ marginBottom: 18 }}>
         <label style={styles.label}>Application Status</label>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -268,20 +417,58 @@ function ApplicantDetail({ applicant: a, onClose, onUpdate }: any) {
           ))}
         </div>
       </div>
+
       <Section title="Contact">
         <Row label="Email" value={a.email} />
         <Row label="Phone" value={a.phone} />
         {a.linkedin_url && <Row label="LinkedIn" value={<a href={a.linkedin_url} target="_blank" rel="noreferrer">{a.linkedin_url}</a>} />}
         {a.portfolio_url && <Row label="Portfolio" value={<a href={a.portfolio_url} target="_blank" rel="noreferrer">{a.portfolio_url}</a>} />}
       </Section>
-      <Section title="Extracted from CV">
-        <Row label="Experience" value={ed.years_experience != null ? `${ed.years_experience} years` : null} />
+
+      {a.selected_roles?.length > 0 && (
+        <Section title="Applied Roles">
+          <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6 }}>
+            {a.selected_roles.map((r: string) => <span key={r} style={{ background: '#e8f5f1', borderRadius: 6, padding: '3px 10px', fontSize: 13, color: '#0f6e56' }}>{r}</span>)}
+          </div>
+        </Section>
+      )}
+
+      <Section title="Experience">
+        <Row label="Total" value={`${a.experience_years || 0} Years ${a.experience_months || 0} Months`} />
+        {a.domain_experience && <Row label="Domain" value={a.domain_experience} />}
+        {a.technology_highlights?.filter((t: any) => t.tech).length > 0 && (
+          <div style={{ marginTop: 8 }}>
+            <div style={{ fontSize: 13, color: '#888', marginBottom: 4 }}>Technology Highlights</div>
+            {a.technology_highlights.filter((t: any) => t.tech).map((t: any, i: number) => (
+              <div key={i} style={{ fontSize: 13, display: 'flex', gap: 8 }}>
+                <span style={{ color: '#1a1a1a' }}>{t.tech}</span>
+                <span style={{ color: '#888' }}>{t.years}Y</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Section>
+
+      {(ks.languages || ks.frameworks || ks.databases || ks.other) && (
+        <Section title="Key Skills">
+          {ks.languages && <Row label="Languages" value={ks.languages} />}
+          {ks.frameworks && <Row label="Frameworks" value={ks.frameworks} />}
+          {ks.databases && <Row label="Databases" value={ks.databases} />}
+          {ks.other && <Row label="Other" value={ks.other} />}
+        </Section>
+      )}
+
+      {a.professional_qualifications && (
+        <Section title="Professional Qualifications & Experience">
+          <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: 13, color: '#333', background: '#f9f9f9', padding: 12, borderRadius: 8, margin: 0 }}>{a.professional_qualifications}</pre>
+        </Section>
+      )}
+
+      <Section title="AI Extracted Info">
         <Row label="Location" value={ed.location} />
         <Row label="Degree" value={ed.degree_level} />
         <Row label="Field of Study" value={ed.field_of_study} />
         <Row label="English" value={ed.english_level} />
-        {ed.past_job_titles?.length > 0 && <Row label="Past Titles" value={ed.past_job_titles.join(', ')} />}
-        {ed.methodologies?.length > 0 && <Row label="Methodologies" value={ed.methodologies.join(', ')} />}
         {ed.skills?.length > 0 && (
           <div style={{ marginBottom: 8 }}>
             <span style={{ fontSize: 13, color: '#888', width: 130, display: 'inline-block' }}>Skills</span>
@@ -290,18 +477,33 @@ function ApplicantDetail({ applicant: a, onClose, onUpdate }: any) {
             </div>
           </div>
         )}
-        {ed.summary && <div style={{ marginTop: 10, fontSize: 13, color: '#555', fontStyle: 'italic', background: '#f9f9f9', borderRadius: 8, padding: '10px 12px' }}>{ed.summary}</div>}
+        {ed.summary && <div style={{ marginTop: 8, fontSize: 13, color: '#555', fontStyle: 'italic', background: '#f9f9f9', borderRadius: 8, padding: '10px 12px' }}>{ed.summary}</div>}
       </Section>
-      {a.referral_name && (
+
+      {a.referral_source && (
         <Section title="Referral">
-          <Row label="Referred by" value={a.referral_name} />
-          <Row label="Referral email" value={a.referral_email} />
+          <Row label="Source" value={a.referral_source} />
+          {a.referral_name && <Row label="Referred by" value={a.referral_name} />}
         </Section>
       )}
-      <a href={a.cv_file_url} target="_blank" rel="noreferrer"
-        style={{ display: 'inline-block', marginBottom: 20, padding: '9px 18px', background: '#0f6e56', color: '#fff', borderRadius: 8, fontSize: 14, fontWeight: 500, textDecoration: 'none' }}>
-        📄 Download CV
-      </a>
+
+      {/* Download buttons */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' as const }}>
+        <a href={a.cv_file_url} target="_blank" rel="noreferrer"
+          style={{ padding: '9px 18px', background: '#0f6e56', color: '#fff', borderRadius: 8, fontSize: 14, fontWeight: 500, textDecoration: 'none' }}>
+          📄 Download CV
+        </a>
+        <button onClick={() => onDownloadInova(a)}
+          style={{ padding: '9px 18px', background: '#1a3a8f', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>
+          🏢 Download Inova CV
+        </button>
+        <button onClick={() => onDelete(a.id)}
+          style={{ padding: '9px 18px', background: '#fff0f0', color: '#c00', border: '1px solid #fcc', borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>
+          🗑 Delete Applicant
+        </button>
+      </div>
+
+      {/* Admin Notes */}
       <Section title="Admin Notes (private)">
         <textarea value={notes} onChange={e => setNotes(e.target.value)}
           style={{ width: '100%', minHeight: 80, padding: 10, border: '1px solid #ddd', borderRadius: 8, fontSize: 14, resize: 'vertical' as const, boxSizing: 'border-box' as const }} />
