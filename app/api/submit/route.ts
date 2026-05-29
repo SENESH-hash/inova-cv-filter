@@ -1,26 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import Groq from 'groq-sdk'
-import * as pdfParse from 'pdf-parse'
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 
+async function extractTextFromBuffer(fileBuffer: Buffer, fileType: string): Promise<string> {
+  try {
+    if (fileType === 'pdf') {
+      // Extract readable text from PDF buffer directly
+      const text = fileBuffer.toString('latin1')
+      const matches = text.match(/\(([^)]{2,100})\)/g) || []
+      const extracted = matches
+        .map(m => m.slice(1, -1))
+        .filter(s => /[a-zA-Z]{2,}/.test(s))
+        .join(' ')
+      return extracted.slice(0, 4000)
+    } else {
+      return fileBuffer.toString('utf-8').replace(/[^\x20-\x7E\n]/g, ' ').slice(0, 4000)
+    }
+  } catch (e) {
+    return ''
+  }
+}
+
 async function extractCVData(fileBuffer: Buffer, fileType: string) {
   try {
-    let cvText = ''
-    if (fileType === 'pdf') {
-      const pdfData = await (pdfParse as any)(fileBuffer)
-      cvText = pdfData.text.slice(0, 4000)
-    } else {
-      cvText = fileBuffer.toString('utf-8').slice(0, 4000)
-    }
+    const cvText = await extractTextFromBuffer(fileBuffer, fileType)
+    if (!cvText.trim()) return {}
 
     const response = await groq.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
       max_tokens: 1500,
       messages: [{
         role: 'user',
-        content: `Extract info from this CV. Return ONLY valid JSON, no markdown, no backticks.\n\nCV:\n${cvText}\n\n{"years_experience":null,"location":null,"skills":[],"methodologies":[],"degree_level":null,"field_of_study":null,"past_job_titles":[],"english_level":null,"certifications":[],"summary":""}`
+        content: `Extract info from this CV text. Return ONLY valid JSON, no markdown, no backticks.\n\nCV TEXT:\n${cvText}\n\nReturn: {"years_experience":null,"location":null,"skills":[],"methodologies":[],"degree_level":null,"field_of_study":null,"past_job_titles":[],"english_level":null,"certifications":[],"summary":""}`
       }]
     })
     const text = response.choices[0]?.message?.content || ''
@@ -41,7 +54,6 @@ export async function POST(req: NextRequest) {
     const phone = formData.get('phone') as string
     const linkedinUrl = formData.get('linkedin_url') as string
     const portfolioUrl = formData.get('portfolio_url') as string
-    const desiredRole = formData.get('desired_role') as string || ''
     const selectedRolesRaw = formData.get('selected_roles') as string
     const selectedRoles = selectedRolesRaw ? JSON.parse(selectedRolesRaw) : []
     const techHighlightsRaw = formData.get('tech_highlights') as string
@@ -69,9 +81,7 @@ export async function POST(req: NextRequest) {
     const fileBuffer = Buffer.from(await cvFile.arrayBuffer())
     const fileName = cvFile.name.toLowerCase()
     const fileType = fileName.endsWith('.pdf') ? 'pdf' : 'docx'
-    const fileExt = fileType === 'pdf' ? 'pdf' : 'docx'
-    const fileKey = `${Date.now()}-${email.replace('@', '_at_')}.${fileExt}`
-
+    const fileKey = `${Date.now()}-${email.replace('@', '_at_')}.${fileType}`
     const contentType = fileType === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
     const { error: uploadError } = await supabaseAdmin.storage
