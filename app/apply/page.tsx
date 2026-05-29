@@ -79,9 +79,9 @@ export default function ApplyPage() {
   return (
     <div style={styles.page}>
       <div style={styles.card}>
-        <div style={{ marginBottom: 28 }}>
-          <h1 style={{ margin: '0 0 6px', fontSize: 24, color: '#1a1a1a' }}>Inova IT Systems (Pvt) Ltd</h1>
-          <p style={{ margin: 0, color: '#666', fontSize: 15 }}>Submit your CV — we'll be in touch if there's a match.</p>
+        <div style={{ background: '#C41E3A', margin: '-36px -40px 28px', padding: '24px 40px', borderRadius: '14px 14px 0 0' }}>
+          <h1 style={{ margin: '0 0 4px', fontSize: 22, color: '#fff', fontWeight: 700 }}>Inova IT Systems (Pvt) Ltd</h1>
+          <p style={{ margin: 0, color: 'rgba(255,255,255,0.85)', fontSize: 14 }}>Submit your CV — we'll be in touch if there's a match.</p>
         </div>
 
         <form onSubmit={submit}>
@@ -239,11 +239,11 @@ function Field({ label, name, value, onChange, type = 'text', required = false, 
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  page: { minHeight: '100vh', background: '#f5f5f5', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 16px' },
-  card: { background: '#fff', borderRadius: 14, padding: '36px 40px', width: '100%', maxWidth: 700, boxShadow: '0 2px 20px rgba(0,0,0,0.07)' },
+  page: { minHeight: '100vh', background: '#F9F9F9', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 16px' },
+  card: { background: '#fff', borderRadius: 14, padding: '36px 40px', width: '100%', maxWidth: 700, boxShadow: '0 2px 20px rgba(196,30,58,0.08)' },
   grid2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 },
   label: { display: 'block', fontSize: 13, fontWeight: 500, color: '#444', marginBottom: 6 },
-  input: { padding: '9px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, outline: 'none' },
-  fileBox: { border: '2px dashed #ddd', borderRadius: 10, padding: '24px', textAlign: 'center' as const, cursor: 'pointer', background: '#fafafa' },
-  btn: { width: '100%', padding: '13px', background: '#0f6e56', color: '#fff', border: 'none', borderRadius: 10, fontSize: 16, fontWeight: 600, cursor: 'pointer' },
+  input: { width: '100%', padding: '9px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, outline: 'none', boxSizing: 'border-box' as const },
+  fileBox: { border: '2px dashed #C41E3A', borderRadius: 10, padding: '24px', textAlign: 'center' as const, cursor: 'pointer', background: '#FFF0F0' },
+  btn: { width: '100%', padding: '13px', background: '#C41E3A', color: '#fff', border: 'none', borderRadius: 10, fontSize: 16, fontWeight: 600, cursor: 'pointer' },
 }

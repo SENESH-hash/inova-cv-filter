@@ -260,12 +260,12 @@ const downloadInovaCV = (applicant: any) => {
   return (
     <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
       {/* Header */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '14px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>Inova IT — CV Dashboard</h1>
+      <div style={{ background: '#C41E3A', borderBottom: '1px solid #8B0000', padding: '14px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: '#fff' }}>Inova IT — CV Dashboard</h1>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <span style={{ fontSize: 13, color: '#888' }}>{applicants.length} applicant{applicants.length !== 1 ? 's' : ''}</span>
           <button onClick={() => setShowRoleManager(!showRoleManager)} style={{ ...styles.secondaryBtn, background: showRoleManager ? '#f0f9f6' : 'transparent', color: '#0f6e56', borderColor: '#0f6e56' }}>⚙ Manage Roles</button>
-          <button onClick={exportCSV} style={styles.secondaryBtn}>Export CSV</button>
+          <button onClick={exportCSV} style={{ ...styles.secondaryBtn, color: '#fff', borderColor: 'rgba(255,255,255,0.5)' }}>Export CSV</button>
           <button onClick={() => { localStorage.removeItem('admin_token'); setToken(null) }} style={{ ...styles.secondaryBtn, color: '#c00' }}>Sign Out</button>
         </div>
       </div>
@@ -573,11 +573,11 @@ function Row({ label, value }: any) {
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  page: { minHeight: '100vh', background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  page: { minHeight: '100vh', background: '#F9F9F9', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 },
   card: { background: '#fff', borderRadius: 12, padding: '20px', border: '1px solid #eee', cursor: 'pointer' },
   label: { display: 'block', fontSize: 12, fontWeight: 500, color: '#666', marginBottom: 4 },
   input: { padding: '8px 11px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, outline: 'none' },
   select: { padding: '8px 11px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, background: '#fff', cursor: 'pointer' },
-  btn: { background: '#0f6e56', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', padding: '10px 20px' },
-  secondaryBtn: { background: 'transparent', border: '1px solid #ddd', borderRadius: 8, fontSize: 13, cursor: 'pointer', padding: '7px 14px', color: '#444' },
+  btn: { background: '#C41E3A', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', padding: '10px 20px' },
+  secondaryBtn: { background: 'transparent', border: '1px solid #C41E3A', borderRadius: 8, fontSize: 13, cursor: 'pointer', padding: '7px 14px', color: '#C41E3A' },
 }
