@@ -117,73 +117,111 @@ export default function AdminPage() {
     setApplicants(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a))
     if (selected?.id === id) setSelected((s: any) => ({ ...s, ...updates }))
   }
-
-  const downloadInovaCV = (applicant: any) => {
+const downloadInovaCV = (applicant: any) => {
     const a = applicant
     const ed = a.extracted_data || {}
-    const techRows = (a.technology_highlights || [])
-      .filter((t: any) => t.tech)
-      .map((t: any) => `<tr><td style="padding:4px 8px;border:1px solid #ddd;">${t.tech}</td><td style="padding:4px 8px;border:1px solid #ddd;text-align:center">${t.years || '-'}Y</td></tr>`)
-      .join('')
-
     const ks = a.key_skills || {}
+    const logoBase64 = `iVBORw0KGgoAAAANSUhEUgAAAoQAAAGWCAYAAADhQZJCAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAAIdUAACHVAQSctJ0AAHb+SURBVHhe7Z0HmCxVmYZrKvTMvYBkRcEVRREj5qyYM4rKYliz7ppRFMU1IwuKAcxxDbsqZgTTIkYUs5gDRkRBDCA53zuz33+qajpVd1V1V5q5bz9PPxemq06d855Q//nT8Tw+EIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAAC`
+
+    // Build technology highlights table rows
+    const techData = (a.technology_highlights || []).filter((t: any) => t.tech)
+    let techRows = ''
+    for (let i = 0; i < Math.max(techData.length, 3); i += 2) {
+      const left = techData[i] || { tech: '', years: '' }
+      const right = techData[i + 1] || { tech: '', years: '' }
+      techRows += `<tr>
+        <td style="padding:5px 8px;border:1px solid #ccc;font-size:12px;">${left.tech}</td>
+        <td style="padding:5px 8px;border:1px solid #ccc;font-size:12px;text-align:center;width:60px">${left.years ? left.years + 'Y' : ''}</td>
+        <td style="padding:5px 8px;border:1px solid #ccc;font-size:12px;">${right.tech}</td>
+        <td style="padding:5px 8px;border:1px solid #ccc;font-size:12px;text-align:center;width:60px">${right.years ? right.years + 'Y' : ''}</td>
+      </tr>`
+    }
+
     const html = `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8"/>
 <style>
-  body { font-family: Arial, sans-serif; font-size: 13px; margin: 40px; color: #222; }
-  h1 { text-align: center; font-size: 22px; margin-bottom: 4px; text-transform: uppercase; }
-  .email { text-align: center; color: #c00; margin-bottom: 20px; }
-  h2 { font-size: 14px; border-bottom: 2px solid #222; padding-bottom: 4px; margin-top: 20px; text-transform: uppercase; }
-  table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
-  td, th { padding: 5px 8px; border: 1px solid #ddd; font-size: 12px; }
-  th { background: #f5f5f5; font-weight: bold; }
-  ul { margin: 4px 0; padding-left: 20px; }
-  li { margin-bottom: 2px; }
-  .section { margin-bottom: 16px; }
-  pre { white-space: pre-wrap; font-family: Arial; font-size: 12px; margin: 0; }
+  body { font-family: Arial, sans-serif; font-size: 12px; margin: 40px 50px; color: #222; }
+  h1 { text-align: center; font-size: 20px; margin: 8px 0 4px; text-transform: uppercase; letter-spacing: 1px; }
+  .email { text-align: center; color: #c00; margin-bottom: 16px; font-size: 13px; }
+  .section-title { font-weight: bold; font-size: 13px; border-bottom: 2px solid #222; padding-bottom: 3px; margin: 14px 0 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+  td, th { padding: 5px 8px; border: 1px solid #ccc; font-size: 12px; vertical-align: top; }
+  th { background: #f0f0f0; font-weight: bold; text-align: left; width: 200px; }
+  ul { margin: 4px 0 4px 20px; padding: 0; }
+  li { margin-bottom: 3px; font-size: 12px; }
+  pre { white-space: pre-wrap; font-family: Arial; font-size: 12px; margin: 0; line-height: 1.5; }
+  .logo { display: block; margin: 0 auto 8px; height: 55px; }
+  .contact-table td { border: none; padding: 2px 8px; }
 </style>
 </head>
 <body>
-<img src="https://inovait.lk/wp-content/uploads/2023/01/inova-logo.png" style="height:50px;display:block;margin:0 auto 10px" onerror="this.style.display='none'"/>
+<img class="logo" src="data:image/png;base64,${logoBase64}" />
 <h1>${a.full_name || ''}</h1>
 <div class="email">${a.email || ''}</div>
 
-<h2>Skills Summary</h2>
+<div class="section-title">Skills Summary</div>
 <table>
-  <tr><th>Total Years of Experience</th><td>${a.experience_years || 0}Y ${a.experience_months || 0}M</td><td></td><td></td></tr>
-  <tr><th rowspan="${Math.max((a.technology_highlights || []).filter((t:any)=>t.tech).length,1)}">Technology Highlights</th>
-  ${techRows ? techRows.replace('<tr>', '').split('</tr>')[0] + '</tr>' : '<td colspan="3">-</td></tr>'}
-</table>
-${techRows.split('</tr>').slice(1).filter(Boolean).map((r:string) => `<table><tr><td style="width:200px;border:none"></td>${r}</tr></table>`).join('')}
-<table>
-  <tr><th>Domain Experience</th><td colspan="3">${a.domain_experience || ed.summary || '-'}</td></tr>
+  <tr>
+    <th>Total Years of Experience</th>
+    <td colspan="3">${a.experience_years || 0} Years &nbsp; ${a.experience_months || 0} Months</td>
+  </tr>
+  <tr>
+    <th rowspan="${Math.max(techData.length > 0 ? Math.ceil(techData.length / 2) : 1, 1)}">Technology Highlights</th>
+    ${techData.length > 0 ? `
+        <td style="padding:5px 8px;border:1px solid #ccc;font-size:12px;">${techData[0]?.tech || ''}</td>
+        <td style="padding:5px 8px;border:1px solid #ccc;font-size:12px;text-align:center;width:60px">${techData[0]?.years ? techData[0].years + 'Y' : ''}</td>
+        <td style="padding:5px 8px;border:1px solid #ccc;font-size:12px;">${techData[1]?.tech || ''}</td>
+        <td style="padding:5px 8px;border:1px solid #ccc;font-size:12px;text-align:center;width:60px">${techData[1]?.years ? techData[1].years + 'Y' : ''}</td>
+    ` : '<td colspan="4"></td>'}
+  </tr>
+  ${techData.slice(2).reduce((rows: string, _: any, i: number, arr: any[]) => {
+    if (i % 2 === 0) {
+      const left = arr[i] || { tech: '', years: '' }
+      const right = arr[i + 1] || { tech: '', years: '' }
+      return rows + `<tr>
+        <td style="padding:5px 8px;border:1px solid #ccc;">${left.tech}</td>
+        <td style="padding:5px 8px;border:1px solid #ccc;text-align:center;width:60px">${left.years ? left.years + 'Y' : ''}</td>
+        <td style="padding:5px 8px;border:1px solid #ccc;">${right.tech}</td>
+        <td style="padding:5px 8px;border:1px solid #ccc;text-align:center;width:60px">${right.years ? right.years + 'Y' : ''}</td>
+      </tr>`
+    }
+    return rows
+  }, '')}
+  <tr>
+    <th>Domain Experience</th>
+    <td colspan="3">${a.domain_experience || ''}</td>
+  </tr>
 </table>
 
-<h2>Key Skills</h2>
+<div class="section-title">Key Skills</div>
 <table>
-  ${ks.languages ? `<tr><th>Languages</th><td>${ks.languages}</td></tr>` : ''}
-  ${ks.frameworks ? `<tr><th>Frameworks</th><td>${ks.frameworks}</td></tr>` : ''}
-  ${ks.databases ? `<tr><th>Databases</th><td>${ks.databases}</td></tr>` : ''}
-  ${ks.other ? `<tr><th>Other</th><td>${ks.other}</td></tr>` : ''}
+  <tr><th>Languages</th><td>${ks.languages || ''}</td></tr>
+  <tr><th>Frameworks</th><td>${ks.frameworks || ''}</td></tr>
+  <tr><th>Databases</th><td>${ks.databases || ''}</td></tr>
+  <tr><th>Enterprise</th><td></td></tr>
+  <tr><th>Other</th><td>${ks.other || ''}</td></tr>
 </table>
 
-<h2>Professional Qualifications & Experience</h2>
-<div class="section"><pre>${a.professional_qualifications || '-'}</pre></div>
-
-<h2>Contact</h2>
+<div class="section-title">Professional Qualifications</div>
 <table>
-  <tr><th>Phone</th><td>${a.phone || '-'}</td><th>LinkedIn</th><td>${a.linkedin_url || '-'}</td></tr>
-  <tr><th>Portfolio</th><td colspan="3">${a.portfolio_url || '-'}</td></tr>
+  <tr><th>Education</th><td>${ed.degree_level ? `${ed.degree_level}${ed.field_of_study ? ' in ' + ed.field_of_study : ''}` : ''}</td></tr>
+  <tr><th>Certifications</th><td>${(ed.certifications || []).join(', ')}</td></tr>
+  <tr><th>Special Achievements</th><td></td></tr>
 </table>
+
+<div class="section-title">Experience</div>
+<div style="font-weight:bold;font-size:13px;margin:8px 0 6px;text-transform:uppercase;">Inova IT Systems (Pvt) Ltd</div>
+<pre>${a.professional_qualifications || ''}</pre>
+
 </body></html>`
 
     const blob = new Blob([html], { type: 'text/html' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `${a.full_name?.replace(/ /g, '_')}_Inova_CV.html`
+    link.download = `${(a.full_name || 'applicant').replace(/ /g, '_')}_Inova_CV.html`
     link.click()
   }
 
