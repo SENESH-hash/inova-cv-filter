@@ -515,7 +515,7 @@ export default function AdminPage() {
           {filteredApplicants.length > 0 && (
             <button onClick={runAiRanking} disabled={aiRanking}
               style={{ padding: '7px 16px', background: aiRanking ? '#eee' : '#1a3a8f', border: 'none', borderRadius: 8, fontSize: 13, color: aiRanking ? '#999' : '#fff', cursor: aiRanking ? 'not-allowed' : 'pointer', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
-              {aiRanking ? '⏳ AI is ranking...' : '✨ AI Rank Results'}
+              {aiRanking ? '⏳ AI is ranking...' : 'AI Rank Results'}
             </button>
           )}
 
