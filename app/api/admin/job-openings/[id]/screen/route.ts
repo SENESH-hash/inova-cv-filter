@@ -10,10 +10,10 @@ function verifyToken(req: NextRequest) {
   } catch { return null }
 }
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!verifyToken(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const jobId = params.id
+  const { id: jobId } = await params
 
   // 1. Fetch the job opening
   const { data: job, error: jobError } = await supabaseAdmin
