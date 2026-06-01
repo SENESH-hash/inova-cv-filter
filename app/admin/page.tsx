@@ -476,7 +476,7 @@ ${techData.length>0?`<tr><th rowspan="${Math.max(Math.ceil(techData.length/2),1)
 
   // ─── Main dashboard ───────────────────────────────────────────────────────────
   return (
-    <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
+    <div style={{ minHeight: '100vh', background: '#CBD5E1' }}>
 
       {/* Header */}
       <div style={{ background: '#C41E3A', borderBottom: '1px solid #8B0000', padding: '14px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1253,7 +1253,7 @@ function Row({ label, value }: any) {
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  page: { minHeight: '100vh', background: '#F9F9F9', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  page: { minHeight: '100vh', background: '#CBD5E1', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 },
   card: { background: '#fff', borderRadius: 12, padding: '20px', border: '1px solid #eee', cursor: 'pointer' },
   label: { display: 'block', fontSize: 12, fontWeight: 500, color: '#666', marginBottom: 4 },
   input: { padding: '8px 11px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, outline: 'none' },
