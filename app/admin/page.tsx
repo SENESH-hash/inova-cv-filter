@@ -10,7 +10,7 @@ interface FilterRow {
   id: number
   filter: string
   filterValue: string
-  languageType: string   // for "language_level" filter: which language
+  languageType: string
 }
 
 const EMPTY_FILTER = (): FilterRow => ({
@@ -20,7 +20,6 @@ const EMPTY_FILTER = (): FilterRow => ({
   languageType: '',
 })
 
-// ─── Helper: build label for filter option ────────────────────────────────────
 const FILTER_OPTIONS = [
   { value: 'years_experience', label: 'Years of Experience (min)' },
   { value: 'location',         label: 'Location' },
@@ -34,25 +33,100 @@ const FILTER_OPTIONS = [
   { value: 'status',           label: 'Application Status' },
 ]
 
+// ─── Job Opening type ──────────────────────────────────────────────────────────
+interface JobOpening {
+  id: string
+  title: string
+  department: string
+  employment_type: string
+  location: string
+  min_experience_years: number
+  tech_stack: string[]
+  required_methodologies: string[]
+  degree_required: string
+  job_description: string
+  responsibilities: string
+  nice_to_have: string
+  notes: string
+  status: string
+  created_at: string
+}
+
+const EMPTY_JOB = (): Omit<JobOpening, 'id' | 'created_at'> => ({
+  title: '',
+  department: '',
+  employment_type: 'Full-time',
+  location: '',
+  min_experience_years: 0,
+  tech_stack: [],
+  required_methodologies: [],
+  degree_required: '',
+  job_description: '',
+  responsibilities: '',
+  nice_to_have: '',
+  notes: '',
+  status: 'Open',
+})
+
+// ─── TagInput: array of strings with + button ─────────────────────────────────
+function TagInput({ values, onChange, placeholder }: { values: string[], onChange: (v: string[]) => void, placeholder: string }) {
+  const [input, setInput] = useState('')
+  const add = () => {
+    const v = input.trim()
+    if (v && !values.includes(v)) { onChange([...values, v]); setInput('') }
+  }
+  return (
+    <div>
+      <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 5, marginBottom: 6 }}>
+        {values.map(v => (
+          <span key={v} style={{ background: '#e8f0ff', borderRadius: 5, padding: '3px 9px', fontSize: 13, color: '#1a3a8f', display: 'flex', alignItems: 'center', gap: 5 }}>
+            {v}
+            <button onClick={() => onChange(values.filter(x => x !== v))}
+              style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#999', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
+          </span>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: 6 }}>
+        <input value={input} onChange={e => setInput(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add() } }}
+          placeholder={placeholder} style={{ ...styles.input, flex: 1 }} />
+        <button onClick={add} style={{ ...styles.btn, padding: '8px 14px', fontSize: 13 }}>+</button>
+      </div>
+    </div>
+  )
+}
+
 export default function AdminPage() {
   const [token, setToken] = useState<string | null>(null)
   const [loginForm, setLoginForm] = useState({ username: '', password: '' })
   const [loginError, setLoginError] = useState('')
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState<'cvs' | 'jobs'>('cvs')
+
+  // CV Dashboard state
   const [applicants, setApplicants] = useState<any[]>([])
   const [filteredApplicants, setFilteredApplicants] = useState<any[]>([])
-
-  // Multi-filter rows — first row is always present
   const [filterRows, setFilterRows] = useState<FilterRow[]>([EMPTY_FILTER()])
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [searchText, setSearchText] = useState('')
-
   const [selected, setSelected] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [aiRanking, setAiRanking] = useState(false)
   const [roles, setRoles] = useState<{id: string, title: string}[]>([])
   const [newRole, setNewRole] = useState('')
   const [showRoleManager, setShowRoleManager] = useState(false)
+
+  // Job Openings state
+  const [jobOpenings, setJobOpenings] = useState<JobOpening[]>([])
+  const [jobsLoading, setJobsLoading] = useState(false)
+  const [showJobForm, setShowJobForm] = useState(false)
+  const [jobForm, setJobForm] = useState(EMPTY_JOB())
+  const [jobSaving, setJobSaving] = useState(false)
+  const [selectedJob, setSelectedJob] = useState<JobOpening | null>(null)
+  const [screeningJob, setScreeningJob] = useState<string | null>(null) // job id being screened
+  const [screenedResults, setScreenedResults] = useState<{ jobId: string; applicants: any[] } | null>(null)
 
   useEffect(() => {
     const t = localStorage.getItem('admin_token')
@@ -76,15 +150,24 @@ export default function AdminPage() {
     if (Array.isArray(data)) setRoles(data)
   }, [])
 
-  // ─── Apply all filter rows + search client-side ──────────────────────────────
+  // ─── Fetch job openings ──────────────────────────────────────────────────────
+  const fetchJobOpenings = useCallback(async () => {
+    if (!token) return
+    setJobsLoading(true)
+    const res = await fetch('/api/admin/job-openings', { headers: { Authorization: `Bearer ${token}` } })
+    if (res.ok) {
+      const data = await res.json()
+      setJobOpenings(data)
+    }
+    setJobsLoading(false)
+  }, [token])
+
+  // ─── Apply filters ───────────────────────────────────────────────────────────
   const applyFilters = useCallback((allData: any[]) => {
     let result = [...allData]
-
-    // Date range
     if (dateFrom) result = result.filter(a => new Date(a.submitted_at) >= new Date(dateFrom))
     if (dateTo)   result = result.filter(a => new Date(a.submitted_at) <= new Date(dateTo + 'T23:59:59Z'))
 
-    // Each filter row (AND logic — must match ALL active rows)
     for (const row of filterRows) {
       if (!row.filter || !row.filterValue.trim()) continue
       const v = row.filterValue.toLowerCase().trim()
@@ -108,10 +191,8 @@ export default function AdminPage() {
           case 'past_job_titles':
             return ed.past_job_titles?.some((t: string) => t.toLowerCase().includes(v))
           case 'language_level': {
-            // Filter by proficiency in a specific language
             const langType = row.languageType.toLowerCase().trim()
             const ks = a.key_skills || {}
-            // Check structured language array first
             if (Array.isArray(ks.languages)) {
               return ks.languages.some((l: any) => {
                 const nameMatch = !langType || l.language?.toLowerCase().includes(langType)
@@ -119,9 +200,7 @@ export default function AdminPage() {
                 return nameMatch && levelMatch
               })
             }
-            // Fallback: check extracted_data english_level / language fields
-            return ed.english_level?.toLowerCase().includes(v) ||
-                   ed.language_level?.toLowerCase().includes(v)
+            return ed.english_level?.toLowerCase().includes(v) || ed.language_level?.toLowerCase().includes(v)
           }
           case 'desired_role':
             return a.desired_role?.toLowerCase().includes(v) ||
@@ -134,7 +213,6 @@ export default function AdminPage() {
       })
     }
 
-    // Free text search
     if (searchText.trim()) {
       const s = searchText.toLowerCase()
       result = result.filter((a: any) => {
@@ -164,7 +242,6 @@ export default function AdminPage() {
         )
       })
     }
-
     setFilteredApplicants(result)
   }, [filterRows, dateFrom, dateTo, searchText])
 
@@ -178,17 +255,14 @@ export default function AdminPage() {
     setLoading(false)
   }, [token])
 
-  // Re-apply filters whenever raw data or filter state changes
   useEffect(() => { applyFilters(applicants) }, [applicants, applyFilters])
-
-  useEffect(() => { if (token) { fetchApplicants(); fetchRoles() } }, [token, fetchApplicants, fetchRoles])
+  useEffect(() => { if (token) { fetchApplicants(); fetchRoles(); fetchJobOpenings() } }, [token, fetchApplicants, fetchRoles, fetchJobOpenings])
 
   // ─── AI Ranking ──────────────────────────────────────────────────────────────
   const runAiRanking = async () => {
     if (filteredApplicants.length === 0) return
     setAiRanking(true)
     try {
-      // Build a criteria string from active filter rows
       const criteria = filterRows
         .filter(r => r.filter && r.filterValue.trim())
         .map(r => {
@@ -203,56 +277,93 @@ export default function AdminPage() {
         body: JSON.stringify({
           criteria: criteria || 'Best overall fit',
           applicants: filteredApplicants.map(a => ({
-            id: a.id,
-            full_name: a.full_name,
-            experience_years: a.experience_years,
-            experience_months: a.experience_months,
-            desired_role: a.desired_role,
-            selected_roles: a.selected_roles,
-            domain_experience: a.domain_experience,
-            technology_highlights: a.technology_highlights,
-            key_skills: a.key_skills,
-            professional_qualifications: a.professional_qualifications,
-            extracted_data: a.extracted_data,
+            id: a.id, full_name: a.full_name, experience_years: a.experience_years,
+            experience_months: a.experience_months, desired_role: a.desired_role,
+            selected_roles: a.selected_roles, domain_experience: a.domain_experience,
+            technology_highlights: a.technology_highlights, key_skills: a.key_skills,
+            professional_qualifications: a.professional_qualifications, extracted_data: a.extracted_data,
           }))
         })
       })
       if (res.ok) {
         const { rankedIds } = await res.json()
         if (Array.isArray(rankedIds)) {
-          const ranked = rankedIds
-            .map((id: string) => filteredApplicants.find(a => a.id === id))
-            .filter(Boolean)
-          // Include any not ranked at end
+          const ranked = rankedIds.map((id: string) => filteredApplicants.find(a => a.id === id)).filter(Boolean)
           const rest = filteredApplicants.filter(a => !rankedIds.includes(a.id))
           setFilteredApplicants([...ranked, ...rest])
         }
       }
-    } catch (err) {
-      console.error('AI ranking error:', err)
-    }
+    } catch (err) { console.error('AI ranking error:', err) }
     setAiRanking(false)
+  }
+
+  // ─── Screen CVs for a job ────────────────────────────────────────────────────
+  const screenCVsForJob = async (jobId: string) => {
+    setScreeningJob(jobId)
+    setScreenedResults(null)
+    try {
+      const res = await fetch(`/api/admin/job-openings/${jobId}/screen`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        const { rankedApplicants } = await res.json()
+        setScreenedResults({ jobId, applicants: rankedApplicants })
+        // Switch to CV tab to show results
+        setActiveTab('cvs')
+        setSelectedJob(null)
+      }
+    } catch (err) { console.error('Screening error:', err) }
+    setScreeningJob(null)
+  }
+
+  // ─── Job form helpers ────────────────────────────────────────────────────────
+  const saveJob = async () => {
+    if (!jobForm.title.trim()) return alert('Job title is required')
+    setJobSaving(true)
+    const res = await fetch('/api/admin/job-openings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(jobForm),
+    })
+    if (res.ok) {
+      setShowJobForm(false)
+      setJobForm(EMPTY_JOB())
+      fetchJobOpenings()
+    }
+    setJobSaving(false)
+  }
+
+  const deleteJob = async (id: string) => {
+    if (!confirm('Delete this job opening permanently?')) return
+    const res = await fetch('/api/admin/job-openings', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ id }),
+    })
+    if (res.ok) { fetchJobOpenings(); if (selectedJob?.id === id) setSelectedJob(null) }
+  }
+
+  const toggleJobStatus = async (job: JobOpening) => {
+    const newStatus = job.status === 'Open' ? 'Closed' : 'Open'
+    const res = await fetch('/api/admin/job-openings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ id: job.id, status: newStatus }),
+    })
+    if (res.ok) fetchJobOpenings()
   }
 
   // ─── Filter row helpers ──────────────────────────────────────────────────────
   const updateFilterRow = (id: number, updates: Partial<FilterRow>) => {
     setFilterRows(rows => rows.map(r => r.id === id ? { ...r, ...updates } : r))
   }
-
   const addFilterRow = () => setFilterRows(rows => [...rows, EMPTY_FILTER()])
-
   const removeFilterRow = (id: number) => {
     setFilterRows(rows => rows.length === 1 ? [EMPTY_FILTER()] : rows.filter(r => r.id !== id))
   }
-
   const hasActiveFilters = filterRows.some(r => r.filter && r.filterValue.trim()) || dateFrom || dateTo || searchText
-
-  const clearAllFilters = () => {
-    setFilterRows([EMPTY_FILTER()])
-    setDateFrom('')
-    setDateTo('')
-    setSearchText('')
-  }
+  const clearAllFilters = () => { setFilterRows([EMPTY_FILTER()]); setDateFrom(''); setDateTo(''); setSearchText('') }
 
   // ─── Role management ─────────────────────────────────────────────────────────
   const addRole = async () => {
@@ -263,7 +374,6 @@ export default function AdminPage() {
     })
     if (res.ok) { setNewRole(''); fetchRoles() }
   }
-
   const deleteRole = async (id: string) => {
     await fetch('/api/admin/roles', {
       method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -274,9 +384,7 @@ export default function AdminPage() {
 
   const deleteApplicant = async (id: string) => {
     if (!confirm('Are you sure you want to permanently delete this applicant?')) return
-    await fetch(`/api/admin/applicants/${id}`, {
-      method: 'DELETE', headers: { Authorization: `Bearer ${token}` }
-    })
+    await fetch(`/api/admin/applicants/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
     setApplicants(prev => prev.filter(a => a.id !== id))
     setSelected(null)
   }
@@ -296,113 +404,50 @@ export default function AdminPage() {
     const ed = a.extracted_data || {}
     const ks = a.key_skills || {}
     const logoBase64 = `iVBORw0KGgoAAAANSUhEUgAAAoQAAAGWCAYAAADhQZJCAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAAIdUAACHVAQSctJ0AAHb+SURBVHhe7Z0HmCxVmYZrKvTMvYBkRcEVRREj5qyYM4rKYliz7ppRFMU1IwuKAcxxDbsqZgTTIkYUs5gDRkRBDCA53zuz33+qajpVd1V1V5q5bz9PPxemq04`
-
     const techData = (a.technology_highlights || []).filter((t: any) => t.tech)
-
-    // Build language display for key skills
     let langDisplay = ''
     if (Array.isArray(ks.languages)) {
       langDisplay = ks.languages.map((l: any) => `${l.language}${l.proficiency ? ` (${l.proficiency})` : ''}`).join(', ')
-    } else {
-      langDisplay = ks.languages || ''
-    }
+    } else { langDisplay = ks.languages || '' }
 
-    const html = `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8"/>
-<style>
-  body { font-family: Arial, sans-serif; font-size: 12px; margin: 40px 50px; color: #222; }
-  h1 { text-align: center; font-size: 20px; margin: 8px 0 4px; text-transform: uppercase; letter-spacing: 1px; }
-  .email { text-align: center; color: #c00; margin-bottom: 16px; font-size: 13px; }
-  .section-title { font-weight: bold; font-size: 13px; border-bottom: 2px solid #222; padding-bottom: 3px; margin: 14px 0 6px; text-transform: uppercase; letter-spacing: 0.5px; }
-  table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-  td, th { padding: 5px 8px; border: 1px solid #ccc; font-size: 12px; vertical-align: top; }
-  th { background: #f0f0f0; font-weight: bold; text-align: left; width: 200px; }
-  ul { margin: 4px 0 4px 20px; padding: 0; }
-  li { margin-bottom: 3px; font-size: 12px; }
-  pre { white-space: pre-wrap; font-family: Arial; font-size: 12px; margin: 0; line-height: 1.5; }
-  .logo { display: block; margin: 0 auto 8px; height: 55px; }
-</style>
-</head>
-<body>
-<img class="logo" src="data:image/png;base64,${logoBase64}" />
-<h1>${a.full_name || ''}</h1>
-<div class="email">${a.email || ''}</div>
-
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
+<style>body{font-family:Arial,sans-serif;font-size:12px;margin:40px 50px;color:#222}h1{text-align:center;font-size:20px;margin:8px 0 4px;text-transform:uppercase;letter-spacing:1px}.email{text-align:center;color:#c00;margin-bottom:16px;font-size:13px}.section-title{font-weight:bold;font-size:13px;border-bottom:2px solid #222;padding-bottom:3px;margin:14px 0 6px;text-transform:uppercase;letter-spacing:.5px}table{width:100%;border-collapse:collapse;margin-bottom:10px}td,th{padding:5px 8px;border:1px solid #ccc;font-size:12px;vertical-align:top}th{background:#f0f0f0;font-weight:bold;text-align:left;width:200px}ul{margin:4px 0 4px 20px;padding:0}li{margin-bottom:3px;font-size:12px}pre{white-space:pre-wrap;font-family:Arial;font-size:12px;margin:0;line-height:1.5}.logo{display:block;margin:0 auto 8px;height:55px}</style>
+</head><body>
+<img class="logo" src="data:image/png;base64,${logoBase64}"/>
+<h1>${a.full_name || ''}</h1><div class="email">${a.email || ''}</div>
 <div class="section-title">Skills Summary</div>
-<table>
-  <tr>
-    <th>Total Years of Experience</th>
-    <td colspan="3">${a.experience_years || 0} Years &nbsp; ${a.experience_months || 0} Months</td>
-  </tr>
-  ${techData.length > 0 ? `<tr>
-    <th rowspan="${Math.max(Math.ceil(techData.length / 2), 1)}">Technology Highlights</th>
-    <td>${techData[0]?.tech || ''}</td>
-    <td style="text-align:center;width:60px">${techData[0]?.years ? techData[0].years + 'Y' : ''}</td>
-    <td>${techData[1]?.tech || ''}</td>
-    <td style="text-align:center;width:60px">${techData[1]?.years ? techData[1].years + 'Y' : ''}</td>
-  </tr>
-  ${techData.slice(2).reduce((rows: string, _: any, i: number, arr: any[]) => {
-    if (i % 2 === 0) {
-      return rows + `<tr>
-        <td>${arr[i]?.tech || ''}</td>
-        <td style="text-align:center;width:60px">${arr[i]?.years ? arr[i].years + 'Y' : ''}</td>
-        <td>${arr[i+1]?.tech || ''}</td>
-        <td style="text-align:center;width:60px">${arr[i+1]?.years ? arr[i+1].years + 'Y' : ''}</td>
-      </tr>`
-    }
-    return rows
-  }, '')}` : '<tr><th>Technology Highlights</th><td colspan="3"></td></tr>'}
-  <tr>
-    <th>Domain Experience</th>
-    <td colspan="3">${a.domain_experience || ''}</td>
-  </tr>
-</table>
-
+<table><tr><th>Total Years of Experience</th><td colspan="3">${a.experience_years||0} Years &nbsp; ${a.experience_months||0} Months</td></tr>
+${techData.length>0?`<tr><th rowspan="${Math.max(Math.ceil(techData.length/2),1)}">Technology Highlights</th><td>${techData[0]?.tech||''}</td><td style="text-align:center;width:60px">${techData[0]?.years?techData[0].years+'Y':''}</td><td>${techData[1]?.tech||''}</td><td style="text-align:center;width:60px">${techData[1]?.years?techData[1].years+'Y':''}</td></tr>${techData.slice(2).reduce((rows:string,_:any,i:number,arr:any[])=>{if(i%2===0){return rows+`<tr><td>${arr[i]?.tech||''}</td><td style="text-align:center;width:60px">${arr[i]?.years?arr[i].years+'Y':''}</td><td>${arr[i+1]?.tech||''}</td><td style="text-align:center;width:60px">${arr[i+1]?.years?arr[i+1].years+'Y':''}</td></tr>`}return rows},'')}`:
+'<tr><th>Technology Highlights</th><td colspan="3"></td></tr>'}
+<tr><th>Domain Experience</th><td colspan="3">${a.domain_experience||''}</td></tr></table>
 <div class="section-title">Key Skills</div>
-<table>
-  <tr><th>Languages</th><td>${langDisplay}</td></tr>
-  <tr><th>Frameworks</th><td>${ks.frameworks || ''}</td></tr>
-  <tr><th>Databases</th><td>${ks.databases || ''}</td></tr>
-  <tr><th>Enterprise</th><td></td></tr>
-  <tr><th>Other</th><td>${ks.other || ''}</td></tr>
-</table>
-
+<table><tr><th>Languages</th><td>${langDisplay}</td></tr><tr><th>Frameworks</th><td>${ks.frameworks||''}</td></tr><tr><th>Databases</th><td>${ks.databases||''}</td></tr><tr><th>Enterprise</th><td></td></tr><tr><th>Other</th><td>${ks.other||''}</td></tr></table>
 <div class="section-title">Professional Qualifications</div>
-<table>
-  <tr><th>Education</th><td>${ed.degree_level ? `${ed.degree_level}${ed.field_of_study ? ' in ' + ed.field_of_study : ''}` : ''}</td></tr>
-  <tr><th>Certifications</th><td>${(ed.certifications || []).join(', ')}</td></tr>
-  <tr><th>Special Achievements</th><td></td></tr>
-</table>
-
+<table><tr><th>Education</th><td>${ed.degree_level?`${ed.degree_level}${ed.field_of_study?' in '+ed.field_of_study:''}`:''}</td></tr><tr><th>Certifications</th><td>${(ed.certifications||[]).join(', ')}</td></tr><tr><th>Special Achievements</th><td></td></tr></table>
 <div class="section-title">Experience</div>
 <div style="font-weight:bold;font-size:13px;margin:8px 0 6px;text-transform:uppercase;">Inova IT Systems (Pvt) Ltd</div>
-<pre>${a.professional_qualifications || ''}</pre>
-</body></html>`
+<pre>${a.professional_qualifications||''}</pre></body></html>`
 
     const blob = new Blob([html], { type: 'text/html' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
-    link.href = url
-    link.download = `${(a.full_name || 'applicant').replace(/ /g, '_')}_Inova_CV.html`
-    link.click()
+    link.href = url; link.download = `${(a.full_name||'applicant').replace(/ /g,'_')}_Inova_CV.html`; link.click()
   }
 
   // ─── Export CSV ──────────────────────────────────────────────────────────────
   const exportCSV = () => {
-    const headers = ['Name', 'Email', 'Phone', 'Role', 'Status', 'Experience', 'Location', 'Skills', 'Degree', 'Submitted']
+    const headers = ['Name','Email','Phone','Role','Status','Experience','Location','Skills','Degree','Submitted']
     const rows = filteredApplicants.map(a => {
       const ed = a.extracted_data || {}
-      return [a.full_name, a.email, a.phone || '', a.desired_role, a.status,
-        `${a.experience_years || 0}Y ${a.experience_months || 0}M`,
-        ed.location || '', (ed.skills || []).join('; '), ed.degree_level || '',
+      return [a.full_name,a.email,a.phone||'',a.desired_role,a.status,
+        `${a.experience_years||0}Y ${a.experience_months||0}M`,
+        ed.location||'',(ed.skills||[]).join('; '),ed.degree_level||'',
         new Date(a.submitted_at).toLocaleDateString()]
     })
-    const csv = [headers, ...rows].map(r => r.map((v: string) => `"${v}"`).join(',')).join('\n')
-    const blob = new Blob([csv], { type: 'text/csv' })
+    const csv = [headers,...rows].map(r=>r.map((v:string)=>`"${v}"`).join(',')).join('\n')
+    const blob = new Blob([csv],{type:'text/csv'})
     const url = URL.createObjectURL(blob)
-    const link = document.createElement('a'); link.href = url; link.download = 'applicants.csv'; link.click()
+    const link = document.createElement('a'); link.href=url; link.download='applicants.csv'; link.click()
   }
 
   // ─── Login screen ─────────────────────────────────────────────────────────────
@@ -423,21 +468,45 @@ export default function AdminPage() {
     </div>
   )
 
+  // ─── Screened results banner ──────────────────────────────────────────────────
+  const screenedJob = screenedResults ? jobOpenings.find(j => j.id === screenedResults.jobId) : null
+
+  // The CV list to show — screened results take priority if active
+  const displayApplicants = screenedResults ? screenedResults.applicants : filteredApplicants
+
   // ─── Main dashboard ───────────────────────────────────────────────────────────
   return (
     <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
 
       {/* Header */}
       <div style={{ background: '#C41E3A', borderBottom: '1px solid #8B0000', padding: '14px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: '#fff' }}>Inova IT — CV Dashboard</h1>
+        <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: '#fff' }}>Inova IT — Admin</h1>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>
-            {filteredApplicants.length}{filteredApplicants.length !== applicants.length ? ` / ${applicants.length}` : ''} applicant{applicants.length !== 1 ? 's' : ''}
-          </span>
+          {activeTab === 'cvs' && (
+            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>
+              {displayApplicants.length}{!screenedResults && displayApplicants.length !== applicants.length ? ` / ${applicants.length}` : ''} applicant{applicants.length !== 1 ? 's' : ''}
+            </span>
+          )}
           <button onClick={() => setShowRoleManager(!showRoleManager)} style={{ ...styles.secondaryBtn, background: showRoleManager ? '#f0f9f6' : 'transparent', color: showRoleManager ? '#0f6e56' : '#fff', borderColor: showRoleManager ? '#0f6e56' : 'rgba(255,255,255,0.5)' }}>Manage Roles</button>
-          <button onClick={exportCSV} style={{ ...styles.secondaryBtn, color: '#fff', borderColor: 'rgba(255,255,255,0.5)' }}>Export CSV</button>
+          {activeTab === 'cvs' && <button onClick={exportCSV} style={{ ...styles.secondaryBtn, color: '#fff', borderColor: 'rgba(255,255,255,0.5)' }}>Export CSV</button>}
           <button onClick={() => { localStorage.removeItem('admin_token'); setToken(null) }} style={{ ...styles.secondaryBtn, color: '#ffaaaa', borderColor: 'rgba(255,255,255,0.3)' }}>Sign Out</button>
         </div>
+      </div>
+
+      {/* Tabs */}
+      <div style={{ background: '#fff', borderBottom: '2px solid #eee', padding: '0 28px', display: 'flex', gap: 0 }}>
+        <button
+          onClick={() => { setActiveTab('cvs'); setScreenedResults(null) }}
+          style={{ padding: '14px 24px', border: 'none', borderBottom: activeTab === 'cvs' ? '3px solid #C41E3A' : '3px solid transparent', background: 'none', fontSize: 14, fontWeight: 600, color: activeTab === 'cvs' ? '#C41E3A' : '#888', cursor: 'pointer', marginBottom: -2 }}
+        >
+          CV Dashboard
+        </button>
+        <button
+          onClick={() => setActiveTab('jobs')}
+          style={{ padding: '14px 24px', border: 'none', borderBottom: activeTab === 'jobs' ? '3px solid #C41E3A' : '3px solid transparent', background: 'none', fontSize: 14, fontWeight: 600, color: activeTab === 'jobs' ? '#C41E3A' : '#888', cursor: 'pointer', marginBottom: -2 }}
+        >
+          Job Openings {jobOpenings.length > 0 && <span style={{ background: '#C41E3A', color: '#fff', borderRadius: 10, padding: '1px 7px', fontSize: 11, marginLeft: 5 }}>{jobOpenings.filter(j => j.status === 'Open').length}</span>}
+        </button>
       </div>
 
       {/* Role Manager */}
@@ -463,152 +532,467 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* ── Filter Panel ─────────────────────────────────────────────────────── */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '14px 28px' }}>
+      {/* ══════════════════ CV DASHBOARD TAB ══════════════════ */}
+      {activeTab === 'cvs' && (
+        <>
+          {/* Screened results banner */}
+          {screenedResults && screenedJob && (
+            <div style={{ background: '#1a3a8f', padding: '12px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ color: '#fff', fontSize: 14 }}>
+                <strong>AI Screening Results</strong> for <em>{screenedJob.title}</em> — {screenedResults.applicants.length} CVs ranked by match score
+              </div>
+              <button onClick={() => setScreenedResults(null)}
+                style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.4)', borderRadius: 6, color: '#fff', padding: '5px 12px', cursor: 'pointer', fontSize: 13 }}>
+                Clear Results
+              </button>
+            </div>
+          )}
 
-        {/* Search bar — always visible */}
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' as const, alignItems: 'flex-end', marginBottom: 12 }}>
-          <div>
-            <label style={styles.label}>Search anything</label>
-            <input value={searchText} onChange={e => setSearchText(e.target.value)}
-              placeholder="e.g. React, Colombo, MBA..."
-              style={{ ...styles.input, width: 260 }} />
+          {/* Filter Panel — hidden when showing screened results */}
+          {!screenedResults && (
+            <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '14px 28px' }}>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' as const, alignItems: 'flex-end', marginBottom: 12 }}>
+                <div>
+                  <label style={styles.label}>Search anything</label>
+                  <input value={searchText} onChange={e => setSearchText(e.target.value)}
+                    placeholder="e.g. React, Colombo, MBA..."
+                    style={{ ...styles.input, width: 260 }} />
+                </div>
+                <div>
+                  <label style={styles.label}>From date</label>
+                  <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={styles.input} />
+                </div>
+                <div>
+                  <label style={styles.label}>To date</label>
+                  <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={styles.input} />
+                </div>
+                {hasActiveFilters && (
+                  <button onClick={clearAllFilters} style={{ ...styles.secondaryBtn, alignSelf: 'flex-end', color: '#c00', borderColor: '#fcc' }}>
+                    Clear all filters
+                  </button>
+                )}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+                {filterRows.map((row, idx) => (
+                  <FilterRibbon key={row.id} row={row} index={idx} totalRows={filterRows.length} roles={roles}
+                    onChange={updates => updateFilterRow(row.id, updates)} onRemove={() => removeFilterRow(row.id)} />
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 10, marginTop: 10, alignItems: 'center' }}>
+                <button onClick={addFilterRow}
+                  style={{ padding: '7px 16px', background: '#f0f9f6', border: '1.5px dashed #0f6e56', borderRadius: 8, fontSize: 13, color: '#0f6e56', cursor: 'pointer', fontWeight: 500 }}>
+                  + Add another filter
+                </button>
+                {filteredApplicants.length > 0 && (
+                  <button onClick={runAiRanking} disabled={aiRanking}
+                    style={{ padding: '7px 16px', background: aiRanking ? '#eee' : '#1a3a8f', border: 'none', borderRadius: 8, fontSize: 13, color: aiRanking ? '#999' : '#fff', cursor: aiRanking ? 'not-allowed' : 'pointer', fontWeight: 500 }}>
+                    {aiRanking ? 'AI is ranking...' : 'AI Rank Results'}
+                  </button>
+                )}
+                {filteredApplicants.length > 0 && (
+                  <span style={{ fontSize: 12, color: '#888' }}>
+                    {filteredApplicants.length} match{filteredApplicants.length !== 1 ? 'es' : ''}
+                    {filteredApplicants.length !== applicants.length && ` (of ${applicants.length} total)`}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Cards */}
+          <div style={{ padding: '24px 28px' }}>
+            {loading ? (
+              <p style={{ color: '#888', textAlign: 'center' as const, marginTop: 60 }}>Loading applicants…</p>
+            ) : displayApplicants.length === 0 ? (
+              <p style={{ color: '#888', textAlign: 'center' as const, marginTop: 60 }}>
+                {applicants.length === 0 ? 'No applicants yet.' : 'No applicants match the current filters.'}
+              </p>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+                {displayApplicants.map((a, idx) => (
+                  <ApplicantCard key={a.id} applicant={a} rank={idx + 1}
+                    showScore={!!screenedResults}
+                    onSelect={setSelected} onUpdate={updateApplicant} onDelete={deleteApplicant} />
+                ))}
+              </div>
+            )}
           </div>
-          <div>
-            <label style={styles.label}>From date</label>
-            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={styles.input} />
-          </div>
-          <div>
-            <label style={styles.label}>To date</label>
-            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={styles.input} />
-          </div>
-          {hasActiveFilters && (
-            <button onClick={clearAllFilters}
-              style={{ ...styles.secondaryBtn, alignSelf: 'flex-end', color: '#c00', borderColor: '#fcc' }}>
-              ✕ Clear all filters
+        </>
+      )}
+
+      {/* ══════════════════ JOB OPENINGS TAB ══════════════════ */}
+      {activeTab === 'jobs' && (
+        <div style={{ padding: '24px 28px' }}>
+
+          {/* Header row */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: 18 }}>Job Openings</h2>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: '#888' }}>Manage open positions and screen CVs with AI</p>
+            </div>
+            <button onClick={() => { setShowJobForm(true); setSelectedJob(null) }} style={styles.btn}>
+              + New Job Opening
             </button>
-          )}
-        </div>
-
-        {/* Dynamic filter rows */}
-        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
-          {filterRows.map((row, idx) => (
-            <FilterRibbon
-              key={row.id}
-              row={row}
-              index={idx}
-              totalRows={filterRows.length}
-              roles={roles}
-              onChange={updates => updateFilterRow(row.id, updates)}
-              onRemove={() => removeFilterRow(row.id)}
-            />
-          ))}
-        </div>
-
-        {/* Add filter + AI Rank buttons */}
-        <div style={{ display: 'flex', gap: 10, marginTop: 10, alignItems: 'center' }}>
-          <button onClick={addFilterRow}
-            style={{ padding: '7px 16px', background: '#f0f9f6', border: '1.5px dashed #0f6e56', borderRadius: 8, fontSize: 13, color: '#0f6e56', cursor: 'pointer', fontWeight: 500 }}>
-            + Add another filter
-          </button>
-
-          {filteredApplicants.length > 0 && (
-            <button onClick={runAiRanking} disabled={aiRanking}
-              style={{ padding: '7px 16px', background: aiRanking ? '#eee' : '#1a3a8f', border: 'none', borderRadius: 8, fontSize: 13, color: aiRanking ? '#999' : '#fff', cursor: aiRanking ? 'not-allowed' : 'pointer', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
-              {aiRanking ? '⏳ AI is ranking...' : 'AI Rank Results'}
-            </button>
-          )}
-
-          {filteredApplicants.length > 0 && (
-            <span style={{ fontSize: 12, color: '#888' }}>
-              {filteredApplicants.length} match{filteredApplicants.length !== 1 ? 'es' : ''}
-              {filteredApplicants.length !== applicants.length && ` (of ${applicants.length} total)`}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Cards */}
-      <div style={{ padding: '24px 28px' }}>
-        {loading ? (
-          <p style={{ color: '#888', textAlign: 'center' as const, marginTop: 60 }}>Loading applicants…</p>
-        ) : filteredApplicants.length === 0 ? (
-          <p style={{ color: '#888', textAlign: 'center' as const, marginTop: 60 }}>
-            {applicants.length === 0 ? 'No applicants yet.' : 'No applicants match the current filters.'}
-          </p>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
-            {filteredApplicants.map((a, idx) => (
-              <ApplicantCard key={a.id} applicant={a} rank={aiRanking ? undefined : idx + 1} onSelect={setSelected} onUpdate={updateApplicant} onDelete={deleteApplicant} />
-            ))}
           </div>
-        )}
-      </div>
 
-      {/* Detail Modal */}
+          {/* Job openings grid */}
+          {jobsLoading ? (
+            <p style={{ color: '#888', textAlign: 'center' as const, marginTop: 40 }}>Loading…</p>
+          ) : jobOpenings.length === 0 ? (
+            <div style={{ textAlign: 'center' as const, marginTop: 60, color: '#888' }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
+              <p style={{ fontSize: 15 }}>No job openings yet.</p>
+              <p style={{ fontSize: 13 }}>Click "New Job Opening" to add one.</p>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
+              {jobOpenings.map(job => (
+                <JobCard key={job.id} job={job}
+                  isScreening={screeningJob === job.id}
+                  onSelect={() => setSelectedJob(job)}
+                  onDelete={() => deleteJob(job.id)}
+                  onToggleStatus={() => toggleJobStatus(job)}
+                  onScreen={() => screenCVsForJob(job.id)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Applicant Detail Modal ── */}
       {selected && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999, padding: 24 }}
           onClick={e => e.target === e.currentTarget && setSelected(null)}>
           <ApplicantDetail applicant={selected} onClose={() => setSelected(null)} onUpdate={updateApplicant} onDelete={deleteApplicant} onDownloadInova={downloadInovaCV} />
         </div>
       )}
+
+      {/* ── Job Opening Detail Modal ── */}
+      {selectedJob && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999, padding: 24 }}
+          onClick={e => e.target === e.currentTarget && setSelectedJob(null)}>
+          <JobDetail
+            job={selectedJob}
+            isScreening={screeningJob === selectedJob.id}
+            totalApplicants={applicants.length}
+            onClose={() => setSelectedJob(null)}
+            onDelete={() => { deleteJob(selectedJob.id) }}
+            onToggleStatus={() => toggleJobStatus(selectedJob)}
+            onScreen={() => screenCVsForJob(selectedJob.id)}
+          />
+        </div>
+      )}
+
+      {/* ── New Job Form Modal ── */}
+      {showJobForm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999, padding: 24 }}
+          onClick={e => e.target === e.currentTarget && setShowJobForm(false)}>
+          <JobForm form={jobForm} onChange={setJobForm} onSave={saveJob} onCancel={() => { setShowJobForm(false); setJobForm(EMPTY_JOB()) }} saving={jobSaving} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Job Card ──────────────────────────────────────────────────────────────────
+function JobCard({ job, isScreening, onSelect, onDelete, onToggleStatus, onScreen }: {
+  job: JobOpening
+  isScreening: boolean
+  onSelect: () => void
+  onDelete: () => void
+  onToggleStatus: () => void
+  onScreen: () => void
+}) {
+  return (
+    <div style={{ ...styles.card, cursor: 'default', position: 'relative' as const }}>
+      {/* Status badge */}
+      <div style={{ position: 'absolute' as const, top: 14, right: 14 }}>
+        <span style={{ background: job.status === 'Open' ? '#d1fae5' : '#f3f4f6', color: job.status === 'Open' ? '#065f46' : '#6b7280', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20 }}>
+          {job.status}
+        </span>
+      </div>
+
+      <div style={{ paddingRight: 60, marginBottom: 10, cursor: 'pointer' }} onClick={onSelect}>
+        <div style={{ fontWeight: 700, fontSize: 15, color: '#111' }}>{job.title}</div>
+        {job.department && <div style={{ fontSize: 13, color: '#666', marginTop: 2 }}>{job.department}</div>}
+      </div>
+
+      <div style={{ fontSize: 13, color: '#555', marginBottom: 10, cursor: 'pointer' }} onClick={onSelect}>
+        {job.employment_type && <div>💼 {job.employment_type}</div>}
+        {job.location && <div>📍 {job.location}</div>}
+        {job.min_experience_years > 0 && <div>⏱ {job.min_experience_years}+ years experience</div>}
+        {job.degree_required && <div>🎓 {job.degree_required}</div>}
+      </div>
+
+      {job.tech_stack?.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4, marginBottom: 10, cursor: 'pointer' }} onClick={onSelect}>
+          {job.tech_stack.slice(0, 4).map(t => (
+            <span key={t} style={{ background: '#e8f0ff', borderRadius: 4, padding: '2px 7px', fontSize: 11, color: '#1a3a8f' }}>{t}</span>
+          ))}
+          {job.tech_stack.length > 4 && <span style={{ fontSize: 11, color: '#999' }}>+{job.tech_stack.length - 4}</span>}
+        </div>
+      )}
+
+      <div style={{ fontSize: 12, color: '#bbb', marginBottom: 12 }}>{new Date(job.created_at).toLocaleDateString()}</div>
+
+      {/* Action buttons */}
+      <div style={{ display: 'flex', gap: 6 }}>
+        <button onClick={onScreen} disabled={isScreening}
+          style={{ flex: 2, padding: '7px', background: isScreening ? '#eee' : '#1a3a8f', border: 'none', borderRadius: 6, fontSize: 12, color: isScreening ? '#999' : '#fff', cursor: isScreening ? 'not-allowed' : 'pointer', fontWeight: 600 }}>
+          {isScreening ? 'Screening...' : 'Screen CVs'}
+        </button>
+        <button onClick={onToggleStatus}
+          style={{ flex: 1, padding: '7px', background: '#f9fafb', border: '1px solid #ddd', borderRadius: 6, fontSize: 12, color: '#555', cursor: 'pointer' }}>
+          {job.status === 'Open' ? 'Close' : 'Reopen'}
+        </button>
+        <button onClick={onDelete}
+          style={{ padding: '7px 10px', background: '#fff0f0', border: '1px solid #fcc', borderRadius: 6, fontSize: 12, color: '#c00', cursor: 'pointer' }}>
+          🗑
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Job Detail Modal ──────────────────────────────────────────────────────────
+function JobDetail({ job, isScreening, totalApplicants, onClose, onDelete, onToggleStatus, onScreen }: {
+  job: JobOpening
+  isScreening: boolean
+  totalApplicants: number
+  onClose: () => void
+  onDelete: () => void
+  onToggleStatus: () => void
+  onScreen: () => void
+}) {
+  return (
+    <div style={{ background: '#fff', borderRadius: 14, width: '100%', maxWidth: 660, maxHeight: '90vh', overflowY: 'auto' as const, padding: 32 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+        <div style={{ flex: 1, paddingRight: 16 }}>
+          <h2 style={{ margin: 0, fontSize: 22 }}>{job.title}</h2>
+          {job.department && <div style={{ color: '#666', fontSize: 14, marginTop: 3 }}>{job.department}</div>}
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+          <span style={{ background: job.status === 'Open' ? '#d1fae5' : '#f3f4f6', color: job.status === 'Open' ? '#065f46' : '#6b7280', fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 20 }}>
+            {job.status}
+          </span>
+          <button onClick={onClose} style={{ border: 'none', background: 'none', fontSize: 22, cursor: 'pointer', color: '#999' }}>×</button>
+        </div>
+      </div>
+
+      <div style={{ fontSize: 12, color: '#bbb', marginBottom: 20 }}>Created {new Date(job.created_at).toLocaleDateString()}</div>
+
+      {/* Key details row */}
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' as const, marginBottom: 20, padding: '12px 16px', background: '#f8f9fa', borderRadius: 10 }}>
+        {job.employment_type && <div style={{ fontSize: 13 }}><span style={{ color: '#888' }}>Type: </span>{job.employment_type}</div>}
+        {job.location && <div style={{ fontSize: 13 }}><span style={{ color: '#888' }}>Location: </span>{job.location}</div>}
+        {job.min_experience_years > 0 && <div style={{ fontSize: 13 }}><span style={{ color: '#888' }}>Min Exp: </span>{job.min_experience_years}+ yrs</div>}
+        {job.degree_required && <div style={{ fontSize: 13 }}><span style={{ color: '#888' }}>Degree: </span>{job.degree_required}</div>}
+      </div>
+
+      {job.tech_stack?.length > 0 && (
+        <Section title="Required Tech Stack">
+          <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6 }}>
+            {job.tech_stack.map(t => <span key={t} style={{ background: '#e8f0ff', borderRadius: 6, padding: '4px 11px', fontSize: 13, color: '#1a3a8f' }}>{t}</span>)}
+          </div>
+        </Section>
+      )}
+
+      {job.required_methodologies?.length > 0 && (
+        <Section title="Methodologies">
+          <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6 }}>
+            {job.required_methodologies.map(m => <span key={m} style={{ background: '#f0fdf4', borderRadius: 6, padding: '4px 11px', fontSize: 13, color: '#065f46' }}>{m}</span>)}
+          </div>
+        </Section>
+      )}
+
+      {job.job_description && (
+        <Section title="Job Description">
+          <p style={{ fontSize: 14, color: '#333', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>{job.job_description}</p>
+        </Section>
+      )}
+
+      {job.responsibilities && (
+        <Section title="Responsibilities">
+          <p style={{ fontSize: 14, color: '#333', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>{job.responsibilities}</p>
+        </Section>
+      )}
+
+      {job.nice_to_have && (
+        <Section title="Nice to Have">
+          <p style={{ fontSize: 14, color: '#333', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>{job.nice_to_have}</p>
+        </Section>
+      )}
+
+      {job.notes && (
+        <Section title="Notes (Internal)">
+          <p style={{ fontSize: 14, color: '#555', lineHeight: 1.6, margin: 0, background: '#fffbe6', borderRadius: 8, padding: '10px 12px', whiteSpace: 'pre-wrap' }}>{job.notes}</p>
+        </Section>
+      )}
+
+      {/* Actions */}
+      <div style={{ display: 'flex', gap: 10, marginTop: 24, flexWrap: 'wrap' as const }}>
+        <button onClick={onScreen} disabled={isScreening}
+          style={{ flex: 1, minWidth: 160, padding: '11px 20px', background: isScreening ? '#eee' : '#1a3a8f', border: 'none', borderRadius: 8, fontSize: 14, color: isScreening ? '#999' : '#fff', cursor: isScreening ? 'not-allowed' : 'pointer', fontWeight: 600 }}>
+          {isScreening ? 'Screening CVs...' : `Screen ${totalApplicants} CVs with AI`}
+        </button>
+        <button onClick={onToggleStatus}
+          style={{ padding: '11px 20px', background: '#f9fafb', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, color: '#555', cursor: 'pointer' }}>
+          {job.status === 'Open' ? 'Close Job' : 'Reopen Job'}
+        </button>
+        <button onClick={onDelete}
+          style={{ padding: '11px 20px', background: '#fff0f0', color: '#c00', border: '1px solid #fcc', borderRadius: 8, fontSize: 14, cursor: 'pointer' }}>
+          Delete
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── New Job Form Modal ────────────────────────────────────────────────────────
+function JobForm({ form, onChange, onSave, onCancel, saving }: {
+  form: Omit<JobOpening, 'id' | 'created_at'>
+  onChange: (f: any) => void
+  onSave: () => void
+  onCancel: () => void
+  saving: boolean
+}) {
+  const set = (key: string, val: any) => onChange({ ...form, [key]: val })
+
+  return (
+    <div style={{ background: '#fff', borderRadius: 14, width: '100%', maxWidth: 680, maxHeight: '92vh', overflowY: 'auto' as const, padding: 32 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <h2 style={{ margin: 0 }}>New Job Opening</h2>
+        <button onClick={onCancel} style={{ border: 'none', background: 'none', fontSize: 22, cursor: 'pointer', color: '#999' }}>×</button>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+        <div style={{ gridColumn: '1 / -1' }}>
+          <label style={styles.label}>Job Title *</label>
+          <input value={form.title} onChange={e => set('title', e.target.value)}
+            placeholder="e.g. Senior React Developer" style={{ ...styles.input, width: '100%', boxSizing: 'border-box' as const }} />
+        </div>
+        <div>
+          <label style={styles.label}>Department</label>
+          <input value={form.department} onChange={e => set('department', e.target.value)}
+            placeholder="e.g. Engineering" style={{ ...styles.input, width: '100%', boxSizing: 'border-box' as const }} />
+        </div>
+        <div>
+          <label style={styles.label}>Employment Type</label>
+          <select value={form.employment_type} onChange={e => set('employment_type', e.target.value)} style={{ ...styles.select, width: '100%' }}>
+            <option>Full-time</option>
+            <option>Part-time</option>
+            <option>Contract</option>
+            <option>Internship</option>
+          </select>
+        </div>
+        <div>
+          <label style={styles.label}>Location</label>
+          <input value={form.location} onChange={e => set('location', e.target.value)}
+            placeholder="e.g. Colombo / Remote" style={{ ...styles.input, width: '100%', boxSizing: 'border-box' as const }} />
+        </div>
+        <div>
+          <label style={styles.label}>Min. Years of Experience</label>
+          <input type="number" min={0} value={form.min_experience_years} onChange={e => set('min_experience_years', parseInt(e.target.value) || 0)}
+            style={{ ...styles.input, width: '100%', boxSizing: 'border-box' as const }} />
+        </div>
+        <div>
+          <label style={styles.label}>Degree Required</label>
+          <select value={form.degree_required} onChange={e => set('degree_required', e.target.value)} style={{ ...styles.select, width: '100%' }}>
+            <option value="">None / Any</option>
+            <option>Bachelor</option>
+            <option>Master</option>
+            <option>PhD</option>
+            <option>Diploma</option>
+          </select>
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <label style={styles.label}>Required Tech Stack</label>
+        <TagInput values={form.tech_stack} onChange={v => set('tech_stack', v)} placeholder="Type a technology and press +" />
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <label style={styles.label}>Required Methodologies</label>
+        <TagInput values={form.required_methodologies} onChange={v => set('required_methodologies', v)} placeholder="e.g. Agile, Scrum, Kanban" />
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <label style={styles.label}>Job Description</label>
+        <textarea value={form.job_description} onChange={e => set('job_description', e.target.value)}
+          placeholder="Describe the role, its context, and what success looks like..."
+          style={{ ...styles.input, width: '100%', minHeight: 90, resize: 'vertical' as const, boxSizing: 'border-box' as const }} />
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <label style={styles.label}>Responsibilities</label>
+        <textarea value={form.responsibilities} onChange={e => set('responsibilities', e.target.value)}
+          placeholder="List the main responsibilities..."
+          style={{ ...styles.input, width: '100%', minHeight: 80, resize: 'vertical' as const, boxSizing: 'border-box' as const }} />
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <label style={styles.label}>Nice to Have (optional skills / bonus points)</label>
+        <textarea value={form.nice_to_have} onChange={e => set('nice_to_have', e.target.value)}
+          placeholder="e.g. Experience with AWS, knowledge of Sinhala..."
+          style={{ ...styles.input, width: '100%', minHeight: 60, resize: 'vertical' as const, boxSizing: 'border-box' as const }} />
+      </div>
+
+      <div style={{ marginBottom: 24 }}>
+        <label style={styles.label}>Notes (internal only)</label>
+        <textarea value={form.notes} onChange={e => set('notes', e.target.value)}
+          placeholder="Internal notes, hiring manager comments, budget range, etc."
+          style={{ ...styles.input, width: '100%', minHeight: 60, resize: 'vertical' as const, boxSizing: 'border-box' as const }} />
+      </div>
+
+      <div style={{ display: 'flex', gap: 10 }}>
+        <button onClick={onSave} disabled={saving}
+          style={{ ...styles.btn, flex: 1, opacity: saving ? 0.7 : 1 }}>
+          {saving ? 'Saving...' : 'Save Job Opening'}
+        </button>
+        <button onClick={onCancel}
+          style={{ ...styles.secondaryBtn, padding: '10px 20px' }}>
+          Cancel
+        </button>
+      </div>
     </div>
   )
 }
 
 // ─── Filter Ribbon Component ───────────────────────────────────────────────────
 function FilterRibbon({ row, index, totalRows, roles, onChange, onRemove }: {
-  row: FilterRow
-  index: number
-  totalRows: number
-  roles: {id: string, title: string}[]
-  onChange: (updates: Partial<FilterRow>) => void
-  onRemove: () => void
+  row: FilterRow; index: number; totalRows: number; roles: {id: string, title: string}[]
+  onChange: (updates: Partial<FilterRow>) => void; onRemove: () => void
 }) {
   return (
     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' as const, alignItems: 'flex-end', padding: '10px 14px', background: index % 2 === 0 ? '#fafafa' : '#f4f4f4', borderRadius: 8, border: '1px solid #eee', position: 'relative' as const }}>
-
-      {/* Filter by dropdown */}
       <div>
         <label style={styles.label}>Filter by</label>
-        <select
-          value={row.filter}
-          onChange={e => onChange({ filter: e.target.value, filterValue: '', languageType: '' })}
-          style={styles.select}
-        >
+        <select value={row.filter} onChange={e => onChange({ filter: e.target.value, filterValue: '', languageType: '' })} style={styles.select}>
           <option value="">All applicants</option>
-          {FILTER_OPTIONS.map(opt => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
+          {FILTER_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
         </select>
       </div>
-
-      {/* Language type box — only for language_level */}
       {row.filter === 'language_level' && (
         <div>
           <label style={styles.label}>Language type</label>
-          <input
-            value={row.languageType}
-            onChange={e => onChange({ languageType: e.target.value })}
-            placeholder="e.g. French, Sinhala..."
-            style={{ ...styles.input, width: 160 }}
-          />
+          <input value={row.languageType} onChange={e => onChange({ languageType: e.target.value })}
+            placeholder="e.g. French, Sinhala..." style={{ ...styles.input, width: 160 }} />
         </div>
       )}
-
-      {/* Search value input */}
       {row.filter && (
         <div>
           <label style={styles.label}>Search value</label>
           {row.filter === 'status' ? (
             <select value={row.filterValue} onChange={e => onChange({ filterValue: e.target.value })} style={styles.select}>
               <option value="">Any</option>
-              {['New', 'Shortlisted', 'Interviewed', 'Rejected'].map(s => <option key={s}>{s}</option>)}
+              {['New','Shortlisted','Interviewed','Rejected'].map(s => <option key={s}>{s}</option>)}
             </select>
           ) : row.filter === 'degree_level' ? (
             <select value={row.filterValue} onChange={e => onChange({ filterValue: e.target.value })} style={styles.select}>
               <option value="">Any</option>
-              {['Bachelor', 'Master', 'PhD', 'Diploma', 'None'].map(s => <option key={s}>{s}</option>)}
+              {['Bachelor','Master','PhD','Diploma','None'].map(s => <option key={s}>{s}</option>)}
             </select>
           ) : row.filter === 'language_level' ? (
             <select value={row.filterValue} onChange={e => onChange({ filterValue: e.target.value })} style={styles.select}>
@@ -622,26 +1006,16 @@ function FilterRibbon({ row, index, totalRows, roles, onChange, onRemove }: {
             <select value={row.filterValue} onChange={e => onChange({ filterValue: e.target.value })} style={styles.select}>
               <option value="">Any role</option>
               {roles.map(r => <option key={r.id} value={r.title}>{r.title}</option>)}
-              <option value="__custom__" disabled>— or type below —</option>
             </select>
           ) : (
-            <input
-              value={row.filterValue}
-              onChange={e => onChange({ filterValue: e.target.value })}
-              placeholder={row.filter === 'years_experience' ? 'e.g. 3' : 'Type to filter...'}
-              style={styles.input}
-            />
+            <input value={row.filterValue} onChange={e => onChange({ filterValue: e.target.value })}
+              placeholder={row.filter === 'years_experience' ? 'e.g. 3' : 'Type to filter...'} style={styles.input} />
           )}
         </div>
       )}
-
-      {/* Remove button — show if there's more than 1 row OR row has data */}
       {(totalRows > 1 || row.filter || row.filterValue) && (
-        <button
-          onClick={onRemove}
-          title="Remove this filter"
-          style={{ alignSelf: 'flex-end', padding: '8px 10px', background: '#fff0f0', border: '1px solid #fcc', borderRadius: 6, fontSize: 13, color: '#c00', cursor: 'pointer', lineHeight: 1 }}
-        >
+        <button onClick={onRemove} title="Remove this filter"
+          style={{ alignSelf: 'flex-end', padding: '8px 10px', background: '#fff0f0', border: '1px solid #fcc', borderRadius: 6, fontSize: 13, color: '#c00', cursor: 'pointer', lineHeight: 1 }}>
           ✕
         </button>
       )}
@@ -650,22 +1024,33 @@ function FilterRibbon({ row, index, totalRows, roles, onChange, onRemove }: {
 }
 
 // ─── Applicant Card ────────────────────────────────────────────────────────────
-function ApplicantCard({ applicant: a, rank, onSelect, onUpdate, onDelete }: any) {
+function ApplicantCard({ applicant: a, rank, showScore, onSelect, onUpdate, onDelete }: any) {
   const ed = a.extracted_data || {}
   const ks = a.key_skills || {}
-
   const langDisplay = Array.isArray(ks.languages)
     ? ks.languages.slice(0, 2).map((l: any) => `${l.language}${l.proficiency ? ` (${l.proficiency})` : ''}`).join(', ')
     : ''
 
   return (
     <div style={{ ...styles.card, position: 'relative' as const }} onClick={() => onSelect(a)}>
-      {rank && (
-        <div style={{ position: 'absolute' as const, top: 10, right: 10, background: '#f0f0f0', borderRadius: 20, fontSize: 11, color: '#888', padding: '2px 8px', fontWeight: 600 }}>
-          #{rank}
-        </div>
-      )}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10, paddingRight: rank ? 36 : 0 }}>
+      {/* Rank or Match Score badge */}
+      <div style={{ position: 'absolute' as const, top: 10, right: 10 }}>
+        {showScore && a.match_score != null ? (
+          <span style={{
+            background: a.match_score >= 70 ? '#d1fae5' : a.match_score >= 40 ? '#fef9c3' : '#fee2e2',
+            color: a.match_score >= 70 ? '#065f46' : a.match_score >= 40 ? '#854d0e' : '#991b1b',
+            borderRadius: 20, fontSize: 12, fontWeight: 700, padding: '3px 10px'
+          }}>
+            {a.match_score}% match
+          </span>
+        ) : (
+          <span style={{ background: '#f0f0f0', borderRadius: 20, fontSize: 11, color: '#888', padding: '2px 8px', fontWeight: 600 }}>
+            #{rank}
+          </span>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10, paddingRight: 80 }}>
         <div>
           <div style={{ fontWeight: 600, fontSize: 15 }}>{a.full_name}</div>
           <div style={{ fontSize: 13, color: '#666', marginTop: 2 }}>{a.desired_role}</div>
@@ -709,14 +1094,7 @@ function ApplicantDetail({ applicant: a, onClose, onUpdate, onDelete, onDownload
   const ks = a.key_skills || {}
   const [notes, setNotes] = useState(a.admin_notes || '')
   const [saving, setSaving] = useState(false)
-
-  const saveNotes = async () => {
-    setSaving(true)
-    await onUpdate(a.id, { admin_notes: notes })
-    setSaving(false)
-  }
-
-  // Build language display
+  const saveNotes = async () => { setSaving(true); await onUpdate(a.id, { admin_notes: notes }); setSaving(false) }
   const languageRows: any[] = Array.isArray(ks.languages) ? ks.languages : []
   const hasStructuredLangs = languageRows.length > 0
 
@@ -726,15 +1104,19 @@ function ApplicantDetail({ applicant: a, onClose, onUpdate, onDelete, onDownload
         <div>
           <h2 style={{ margin: 0 }}>{a.full_name}</h2>
           <div style={{ color: '#666', marginTop: 4 }}>{a.desired_role}</div>
+          {a.match_score != null && (
+            <span style={{ display: 'inline-block', marginTop: 6, background: a.match_score >= 70 ? '#d1fae5' : a.match_score >= 40 ? '#fef9c3' : '#fee2e2', color: a.match_score >= 70 ? '#065f46' : a.match_score >= 40 ? '#854d0e' : '#991b1b', borderRadius: 20, fontSize: 13, fontWeight: 700, padding: '4px 12px' }}>
+              {a.match_score}% AI Match Score
+            </span>
+          )}
         </div>
         <button onClick={onClose} style={{ border: 'none', background: 'none', fontSize: 22, cursor: 'pointer', color: '#999' }}>×</button>
       </div>
 
-      {/* Status */}
       <div style={{ marginBottom: 18 }}>
         <label style={styles.label}>Application Status</label>
         <div style={{ display: 'flex', gap: 8 }}>
-          {['New', 'Shortlisted', 'Interviewed', 'Rejected'].map(s => (
+          {['New','Shortlisted','Interviewed','Rejected'].map(s => (
             <button key={s} onClick={() => onUpdate(a.id, { status: s })}
               style={{ padding: '6px 14px', borderRadius: 20, border: `1.5px solid ${STATUS_COLORS[s]}`, background: a.status === s ? STATUS_COLORS[s] : 'transparent', color: a.status === s ? '#fff' : STATUS_COLORS[s], fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
               {s}
@@ -776,7 +1158,6 @@ function ApplicantDetail({ applicant: a, onClose, onUpdate, onDelete, onDownload
 
       {(hasStructuredLangs || ks.frameworks || ks.databases || ks.other || (!hasStructuredLangs && ks.languages)) && (
         <Section title="Key Skills">
-          {/* Languages — structured or legacy string */}
           {hasStructuredLangs ? (
             <div style={{ marginBottom: 8 }}>
               <span style={{ fontSize: 13, color: '#888', display: 'block', marginBottom: 4 }}>Languages</span>
@@ -826,7 +1207,6 @@ function ApplicantDetail({ applicant: a, onClose, onUpdate, onDelete, onDownload
         </Section>
       )}
 
-      {/* Download buttons */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' as const }}>
         <a href={a.cv_file_url} target="_blank" rel="noreferrer"
           style={{ padding: '9px 18px', background: '#0f6e56', color: '#fff', borderRadius: 8, fontSize: 14, fontWeight: 500, textDecoration: 'none' }}>
@@ -842,7 +1222,6 @@ function ApplicantDetail({ applicant: a, onClose, onUpdate, onDelete, onDownload
         </button>
       </div>
 
-      {/* Admin Notes */}
       <Section title="Admin Notes (private)">
         <textarea value={notes} onChange={e => setNotes(e.target.value)}
           style={{ width: '100%', minHeight: 80, padding: 10, border: '1px solid #ddd', borderRadius: 8, fontSize: 14, resize: 'vertical' as const, boxSizing: 'border-box' as const }} />
