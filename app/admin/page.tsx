@@ -434,7 +434,7 @@ export default function AdminPage() {
           <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>
             {filteredApplicants.length}{filteredApplicants.length !== applicants.length ? ` / ${applicants.length}` : ''} applicant{applicants.length !== 1 ? 's' : ''}
           </span>
-          <button onClick={() => setShowRoleManager(!showRoleManager)} style={{ ...styles.secondaryBtn, background: showRoleManager ? '#f0f9f6' : 'transparent', color: showRoleManager ? '#0f6e56' : '#fff', borderColor: showRoleManager ? '#0f6e56' : 'rgba(255,255,255,0.5)' }}>⚙ Manage Roles</button>
+          <button onClick={() => setShowRoleManager(!showRoleManager)} style={{ ...styles.secondaryBtn, background: showRoleManager ? '#f0f9f6' : 'transparent', color: showRoleManager ? '#0f6e56' : '#fff', borderColor: showRoleManager ? '#0f6e56' : 'rgba(255,255,255,0.5)' }}>Manage Roles</button>
           <button onClick={exportCSV} style={{ ...styles.secondaryBtn, color: '#fff', borderColor: 'rgba(255,255,255,0.5)' }}>Export CSV</button>
           <button onClick={() => { localStorage.removeItem('admin_token'); setToken(null) }} style={{ ...styles.secondaryBtn, color: '#ffaaaa', borderColor: 'rgba(255,255,255,0.3)' }}>Sign Out</button>
         </div>
@@ -469,7 +469,7 @@ export default function AdminPage() {
         {/* Search bar — always visible */}
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' as const, alignItems: 'flex-end', marginBottom: 12 }}>
           <div>
-            <label style={styles.label}>🔍 Search anything</label>
+            <label style={styles.label}>Search anything</label>
             <input value={searchText} onChange={e => setSearchText(e.target.value)}
               placeholder="e.g. React, Colombo, MBA..."
               style={{ ...styles.input, width: 260 }} />
