@@ -568,11 +568,6 @@ function FilterRibbon({ row, index, totalRows, roles, onChange, onRemove }: {
   return (
     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' as const, alignItems: 'flex-end', padding: '10px 14px', background: index % 2 === 0 ? '#fafafa' : '#f4f4f4', borderRadius: 8, border: '1px solid #eee', position: 'relative' as const }}>
 
-      {/* Row label */}
-      <div style={{ alignSelf: 'center', fontSize: 11, color: '#bbb', fontWeight: 600, minWidth: 20 }}>
-        {index === 0 ? 'IF' : 'AND'}
-      </div>
-
       {/* Filter by dropdown */}
       <div>
         <label style={styles.label}>Filter by</label>
