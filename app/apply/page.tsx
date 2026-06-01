@@ -3,6 +3,18 @@ import { useState, useEffect } from 'react'
 
 const REFERRAL_OPTIONS = ['Social Networks', 'Company Website', 'Referrals and Networking', 'LinkedIn Jobs Section']
 
+const PROFICIENCY_OPTIONS = [
+  { value: 'Basic (A1/A2)',        label: 'Basic (A1/A2)' },
+  { value: 'Conversational (B1/B2)', label: 'Conversational (B1/B2)' },
+  { value: 'Fluent (C1)',          label: 'Fluent (C1)' },
+  { value: 'Native (C2)',          label: 'Native (C2)' },
+]
+
+interface LanguageEntry {
+  language: string
+  proficiency: string
+}
+
 export default function ApplyPage() {
   const [roles, setRoles] = useState<{id: string, title: string}[]>([])
   const [selectedRoles, setSelectedRoles] = useState<string[]>([])
@@ -15,8 +27,14 @@ export default function ApplyPage() {
   const [techHighlights, setTechHighlights] = useState([
     { tech: '', years: '' }, { tech: '', years: '' }, { tech: '', years: '' }
   ])
+
+  // Language entries — replaces the single "languages" text field
+  const [languageEntries, setLanguageEntries] = useState<LanguageEntry[]>([
+    { language: '', proficiency: '' }
+  ])
+
   const [keySkills, setKeySkills] = useState({
-    languages: '', frameworks: '', databases: '', other: ''
+    frameworks: '', databases: '', other: ''
   })
   const [file, setFile] = useState<File | null>(null)
   const [referralSource, setReferralSource] = useState('')
@@ -39,6 +57,23 @@ export default function ApplyPage() {
     )
   }
 
+  // Language entry helpers
+  const updateLanguageEntry = (index: number, field: keyof LanguageEntry, value: string) => {
+    setLanguageEntries(prev => prev.map((entry, i) => i === index ? { ...entry, [field]: value } : entry))
+  }
+
+  const addLanguageEntry = () => {
+    setLanguageEntries(prev => [...prev, { language: '', proficiency: '' }])
+  }
+
+  const removeLanguageEntry = (index: number) => {
+    if (languageEntries.length === 1) {
+      setLanguageEntries([{ language: '', proficiency: '' }])
+    } else {
+      setLanguageEntries(prev => prev.filter((_, i) => i !== index))
+    }
+  }
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!file) { setErrorMsg('Please upload your CV.'); setStatus('error'); return }
@@ -50,12 +85,21 @@ export default function ApplyPage() {
     }
     setStatus('loading')
 
+    // Build key_skills with structured languages array
+    const validLanguages = languageEntries.filter(l => l.language.trim())
+    const fullKeySkills = {
+      languages: validLanguages,   // array of {language, proficiency}
+      frameworks: keySkills.frameworks,
+      databases: keySkills.databases,
+      other: keySkills.other,
+    }
+
     const fd = new FormData()
     Object.entries(form).forEach(([k, v]) => fd.append(k, v))
     const allRoles = [...selectedRoles, ...(customRole.trim() ? [customRole.trim()] : [])]
     fd.append('selected_roles', JSON.stringify(allRoles))
     fd.append('tech_highlights', JSON.stringify(techHighlights))
-    fd.append('key_skills', JSON.stringify(keySkills))
+    fd.append('key_skills', JSON.stringify(fullKeySkills))
     fd.append('referral_source', referralSource)
     fd.append('referral_name', referralName)
     fd.append('cv_file', file)
@@ -175,7 +219,53 @@ export default function ApplyPage() {
           {/* Key Skills */}
           <div style={{ marginBottom: 20 }}>
             <label style={styles.label}>Key Skills</label>
-            {(['languages', 'frameworks', 'databases', 'other'] as const).map(cat => (
+
+            {/* Languages — structured entries */}
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 13, color: '#555', fontWeight: 500, display: 'block', marginBottom: 6 }}>Languages</label>
+              <p style={{ fontSize: 12, color: '#888', margin: '0 0 8px' }}>Add each language you speak and your proficiency level</p>
+              {languageEntries.map((entry, i) => (
+                <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                  {/* Language name */}
+                  <input
+                    placeholder="Language (e.g. English)"
+                    value={entry.language}
+                    onChange={e => updateLanguageEntry(i, 'language', e.target.value)}
+                    style={{ ...styles.input, flex: 2 }}
+                  />
+                  {/* Proficiency dropdown */}
+                  <select
+                    value={entry.proficiency}
+                    onChange={e => updateLanguageEntry(i, 'proficiency', e.target.value)}
+                    style={{ ...styles.select, flex: 2 }}
+                  >
+                    <option value="">Select level...</option>
+                    {PROFICIENCY_OPTIONS.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                  {/* Remove button (always visible but resets if only 1 row) */}
+                  {languageEntries.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeLanguageEntry(i)}
+                      style={{ padding: '8px 10px', background: '#fff0f0', border: '1px solid #fcc', borderRadius: 8, color: '#c00', cursor: 'pointer', fontSize: 14, lineHeight: 1 }}
+                    >×</button>
+                  )}
+                  {/* Add button — only on last row */}
+                  {i === languageEntries.length - 1 && (
+                    <button
+                      type="button"
+                      onClick={addLanguageEntry}
+                      style={{ padding: '8px 12px', background: '#0f6e56', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 15, fontWeight: 700, lineHeight: 1 }}
+                    >+</button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Other key skill fields */}
+            {(['frameworks', 'databases', 'other'] as const).map(cat => (
               <div key={cat} style={{ marginBottom: 10 }}>
                 <label style={{ fontSize: 13, color: '#555', fontWeight: 500, textTransform: 'capitalize' as const, display: 'block', marginBottom: 4 }}>{cat}</label>
                 <input placeholder={`Enter ${cat}...`} value={keySkills[cat]}
@@ -244,6 +334,7 @@ const styles: Record<string, React.CSSProperties> = {
   grid2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 },
   label: { display: 'block', fontSize: 13, fontWeight: 500, color: '#444', marginBottom: 6 },
   input: { width: '100%', padding: '9px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, outline: 'none', boxSizing: 'border-box' as const },
+  select: { width: '100%', padding: '9px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, outline: 'none', boxSizing: 'border-box' as const, background: '#fff', cursor: 'pointer' },
   fileBox: { border: '2px dashed #C41E3A', borderRadius: 10, padding: '24px', textAlign: 'center' as const, cursor: 'pointer', background: '#FFF0F0' },
   btn: { width: '100%', padding: '13px', background: '#C41E3A', color: '#fff', border: 'none', borderRadius: 10, fontSize: 16, fontWeight: 600, cursor: 'pointer' },
 }

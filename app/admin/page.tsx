@@ -5,18 +5,51 @@ const STATUS_COLORS: Record<string, string> = {
   New: '#2563eb', Shortlisted: '#059669', Interviewed: '#d97706', Rejected: '#dc2626'
 }
 
+// ─── Filter row type ───────────────────────────────────────────────────────────
+interface FilterRow {
+  id: number
+  filter: string
+  filterValue: string
+  languageType: string   // for "language_level" filter: which language
+}
+
+const EMPTY_FILTER = (): FilterRow => ({
+  id: Date.now() + Math.random(),
+  filter: '',
+  filterValue: '',
+  languageType: '',
+})
+
+// ─── Helper: build label for filter option ────────────────────────────────────
+const FILTER_OPTIONS = [
+  { value: 'years_experience', label: 'Years of Experience (min)' },
+  { value: 'location',         label: 'Location' },
+  { value: 'skills',           label: 'Skill / Code Language' },
+  { value: 'methodologies',    label: 'Methodology (Agile, Scrum…)' },
+  { value: 'degree_level',     label: 'Degree Level' },
+  { value: 'field_of_study',   label: 'Field of Study' },
+  { value: 'past_job_titles',  label: 'Past Job Title' },
+  { value: 'language_level',   label: 'Language Level' },
+  { value: 'desired_role',     label: 'Desired Role' },
+  { value: 'status',           label: 'Application Status' },
+]
+
 export default function AdminPage() {
   const [token, setToken] = useState<string | null>(null)
   const [loginForm, setLoginForm] = useState({ username: '', password: '' })
   const [loginError, setLoginError] = useState('')
   const [applicants, setApplicants] = useState<any[]>([])
-  const [filter, setFilter] = useState('')
-  const [filterValue, setFilterValue] = useState('')
+  const [filteredApplicants, setFilteredApplicants] = useState<any[]>([])
+
+  // Multi-filter rows — first row is always present
+  const [filterRows, setFilterRows] = useState<FilterRow[]>([EMPTY_FILTER()])
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  const [searchText, setSearchText] = useState('')
+
   const [selected, setSelected] = useState<any>(null)
   const [loading, setLoading] = useState(false)
-  const [searchText, setSearchText] = useState('')
+  const [aiRanking, setAiRanking] = useState(false)
   const [roles, setRoles] = useState<{id: string, title: string}[]>([])
   const [newRole, setNewRole] = useState('')
   const [showRoleManager, setShowRoleManager] = useState(false)
@@ -43,20 +76,73 @@ export default function AdminPage() {
     if (Array.isArray(data)) setRoles(data)
   }, [])
 
-  const fetchApplicants = useCallback(async () => {
-    if (!token) return
-    setLoading(true)
-    const params = new URLSearchParams()
-    if (filter && filterValue) { params.set('filter', filter); params.set('value', filterValue) }
-    if (dateFrom) params.set('date_from', dateFrom)
-    if (dateTo) params.set('date_to', dateTo)
-    const res = await fetch(`/api/admin/applicants?${params}`, { headers: { Authorization: `Bearer ${token}` } })
-    if (res.status === 401) { localStorage.removeItem('admin_token'); setToken(null); return }
-    let data = await res.json()
+  // ─── Apply all filter rows + search client-side ──────────────────────────────
+  const applyFilters = useCallback((allData: any[]) => {
+    let result = [...allData]
+
+    // Date range
+    if (dateFrom) result = result.filter(a => new Date(a.submitted_at) >= new Date(dateFrom))
+    if (dateTo)   result = result.filter(a => new Date(a.submitted_at) <= new Date(dateTo + 'T23:59:59Z'))
+
+    // Each filter row (AND logic — must match ALL active rows)
+    for (const row of filterRows) {
+      if (!row.filter || !row.filterValue.trim()) continue
+      const v = row.filterValue.toLowerCase().trim()
+      result = result.filter((a: any) => {
+        const ed = a.extracted_data || {}
+        switch (row.filter) {
+          case 'years_experience':
+            return (a.experience_years != null && a.experience_years >= parseInt(v)) ||
+                   (ed.years_experience != null && ed.years_experience >= parseInt(v))
+          case 'location':
+            return ed.location?.toLowerCase().includes(v)
+          case 'skills':
+            return ed.skills?.some((s: string) => s.toLowerCase().includes(v)) ||
+                   a.technology_highlights?.some((t: any) => t.tech?.toLowerCase().includes(v))
+          case 'methodologies':
+            return ed.methodologies?.some((m: string) => m.toLowerCase().includes(v))
+          case 'degree_level':
+            return ed.degree_level?.toLowerCase().includes(v)
+          case 'field_of_study':
+            return ed.field_of_study?.toLowerCase().includes(v)
+          case 'past_job_titles':
+            return ed.past_job_titles?.some((t: string) => t.toLowerCase().includes(v))
+          case 'language_level': {
+            // Filter by proficiency in a specific language
+            const langType = row.languageType.toLowerCase().trim()
+            const ks = a.key_skills || {}
+            // Check structured language array first
+            if (Array.isArray(ks.languages)) {
+              return ks.languages.some((l: any) => {
+                const nameMatch = !langType || l.language?.toLowerCase().includes(langType)
+                const levelMatch = l.proficiency?.toLowerCase().includes(v)
+                return nameMatch && levelMatch
+              })
+            }
+            // Fallback: check extracted_data english_level / language fields
+            return ed.english_level?.toLowerCase().includes(v) ||
+                   ed.language_level?.toLowerCase().includes(v)
+          }
+          case 'desired_role':
+            return a.desired_role?.toLowerCase().includes(v) ||
+                   a.selected_roles?.some((r: string) => r.toLowerCase().includes(v))
+          case 'status':
+            return a.status?.toLowerCase() === v
+          default:
+            return true
+        }
+      })
+    }
+
+    // Free text search
     if (searchText.trim()) {
       const s = searchText.toLowerCase()
-      data = data.filter((a: any) => {
+      result = result.filter((a: any) => {
         const ed = a.extracted_data || {}
+        const ks = a.key_skills || {}
+        const langStr = Array.isArray(ks.languages)
+          ? ks.languages.map((l: any) => `${l.language} ${l.proficiency}`).join(' ')
+          : (ks.languages || '')
         return (
           a.full_name?.toLowerCase().includes(s) ||
           a.email?.toLowerCase().includes(s) ||
@@ -64,6 +150,7 @@ export default function AdminPage() {
           a.status?.toLowerCase().includes(s) ||
           a.domain_experience?.toLowerCase().includes(s) ||
           a.professional_qualifications?.toLowerCase().includes(s) ||
+          langStr.toLowerCase().includes(s) ||
           ed.location?.toLowerCase().includes(s) ||
           ed.degree_level?.toLowerCase().includes(s) ||
           ed.field_of_study?.toLowerCase().includes(s) ||
@@ -77,12 +164,97 @@ export default function AdminPage() {
         )
       })
     }
+
+    setFilteredApplicants(result)
+  }, [filterRows, dateFrom, dateTo, searchText])
+
+  const fetchApplicants = useCallback(async () => {
+    if (!token) return
+    setLoading(true)
+    const res = await fetch(`/api/admin/applicants`, { headers: { Authorization: `Bearer ${token}` } })
+    if (res.status === 401) { localStorage.removeItem('admin_token'); setToken(null); return }
+    const data = await res.json()
     setApplicants(data)
     setLoading(false)
-  }, [token, filter, filterValue, dateFrom, dateTo, searchText])
+  }, [token])
+
+  // Re-apply filters whenever raw data or filter state changes
+  useEffect(() => { applyFilters(applicants) }, [applicants, applyFilters])
 
   useEffect(() => { if (token) { fetchApplicants(); fetchRoles() } }, [token, fetchApplicants, fetchRoles])
 
+  // ─── AI Ranking ──────────────────────────────────────────────────────────────
+  const runAiRanking = async () => {
+    if (filteredApplicants.length === 0) return
+    setAiRanking(true)
+    try {
+      // Build a criteria string from active filter rows
+      const criteria = filterRows
+        .filter(r => r.filter && r.filterValue.trim())
+        .map(r => {
+          const label = FILTER_OPTIONS.find(o => o.value === r.filter)?.label || r.filter
+          const langPart = r.filter === 'language_level' && r.languageType ? ` (${r.languageType})` : ''
+          return `${label}${langPart}: ${r.filterValue}`
+        }).join(', ')
+
+      const res = await fetch('/api/admin/rank', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          criteria: criteria || 'Best overall fit',
+          applicants: filteredApplicants.map(a => ({
+            id: a.id,
+            full_name: a.full_name,
+            experience_years: a.experience_years,
+            experience_months: a.experience_months,
+            desired_role: a.desired_role,
+            selected_roles: a.selected_roles,
+            domain_experience: a.domain_experience,
+            technology_highlights: a.technology_highlights,
+            key_skills: a.key_skills,
+            professional_qualifications: a.professional_qualifications,
+            extracted_data: a.extracted_data,
+          }))
+        })
+      })
+      if (res.ok) {
+        const { rankedIds } = await res.json()
+        if (Array.isArray(rankedIds)) {
+          const ranked = rankedIds
+            .map((id: string) => filteredApplicants.find(a => a.id === id))
+            .filter(Boolean)
+          // Include any not ranked at end
+          const rest = filteredApplicants.filter(a => !rankedIds.includes(a.id))
+          setFilteredApplicants([...ranked, ...rest])
+        }
+      }
+    } catch (err) {
+      console.error('AI ranking error:', err)
+    }
+    setAiRanking(false)
+  }
+
+  // ─── Filter row helpers ──────────────────────────────────────────────────────
+  const updateFilterRow = (id: number, updates: Partial<FilterRow>) => {
+    setFilterRows(rows => rows.map(r => r.id === id ? { ...r, ...updates } : r))
+  }
+
+  const addFilterRow = () => setFilterRows(rows => [...rows, EMPTY_FILTER()])
+
+  const removeFilterRow = (id: number) => {
+    setFilterRows(rows => rows.length === 1 ? [EMPTY_FILTER()] : rows.filter(r => r.id !== id))
+  }
+
+  const hasActiveFilters = filterRows.some(r => r.filter && r.filterValue.trim()) || dateFrom || dateTo || searchText
+
+  const clearAllFilters = () => {
+    setFilterRows([EMPTY_FILTER()])
+    setDateFrom('')
+    setDateTo('')
+    setSearchText('')
+  }
+
+  // ─── Role management ─────────────────────────────────────────────────────────
   const addRole = async () => {
     if (!newRole.trim()) return
     const res = await fetch('/api/admin/roles', {
@@ -117,24 +289,22 @@ export default function AdminPage() {
     setApplicants(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a))
     if (selected?.id === id) setSelected((s: any) => ({ ...s, ...updates }))
   }
-const downloadInovaCV = (applicant: any) => {
+
+  // ─── Inova CV download ───────────────────────────────────────────────────────
+  const downloadInovaCV = (applicant: any) => {
     const a = applicant
     const ed = a.extracted_data || {}
     const ks = a.key_skills || {}
-    const logoBase64 = `iVBORw0KGgoAAAANSUhEUgAAAoQAAAGWCAYAAADhQZJCAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAAIdUAACHVAQSctJ0AAHb+SURBVHhe7Z0HmCxVmYZrKvTMvYBkRcEVRREj5qyYM4rKYliz7ppRFMU1IwuKAcxxDbsqZgTTIkYUs5gDRkRBDCA53zuz33+qajpVd1V1V5q5bz9PPxemq06d855Q//nT8Tw+EIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAAC`
+    const logoBase64 = `iVBORw0KGgoAAAANSUhEUgAAAoQAAAGWCAYAAADhQZJCAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAAIdUAACHVAQSctJ0AAHb+SURBVHhe7Z0HmCxVmYZrKvTMvYBkRcEVRREj5qyYM4rKYliz7ppRFMU1IwuKAcxxDbsqZgTTIkYUs5gDRkRBDCA53zuz33+qajpVd1V1V5q5bz9PPxemq04`
 
-    // Build technology highlights table rows
     const techData = (a.technology_highlights || []).filter((t: any) => t.tech)
-    let techRows = ''
-    for (let i = 0; i < Math.max(techData.length, 3); i += 2) {
-      const left = techData[i] || { tech: '', years: '' }
-      const right = techData[i + 1] || { tech: '', years: '' }
-      techRows += `<tr>
-        <td style="padding:5px 8px;border:1px solid #ccc;font-size:12px;">${left.tech}</td>
-        <td style="padding:5px 8px;border:1px solid #ccc;font-size:12px;text-align:center;width:60px">${left.years ? left.years + 'Y' : ''}</td>
-        <td style="padding:5px 8px;border:1px solid #ccc;font-size:12px;">${right.tech}</td>
-        <td style="padding:5px 8px;border:1px solid #ccc;font-size:12px;text-align:center;width:60px">${right.years ? right.years + 'Y' : ''}</td>
-      </tr>`
+
+    // Build language display for key skills
+    let langDisplay = ''
+    if (Array.isArray(ks.languages)) {
+      langDisplay = ks.languages.map((l: any) => `${l.language}${l.proficiency ? ` (${l.proficiency})` : ''}`).join(', ')
+    } else {
+      langDisplay = ks.languages || ''
     }
 
     const html = `<!DOCTYPE html>
@@ -153,7 +323,6 @@ const downloadInovaCV = (applicant: any) => {
   li { margin-bottom: 3px; font-size: 12px; }
   pre { white-space: pre-wrap; font-family: Arial; font-size: 12px; margin: 0; line-height: 1.5; }
   .logo { display: block; margin: 0 auto 8px; height: 55px; }
-  .contact-table td { border: none; padding: 2px 8px; }
 </style>
 </head>
 <body>
@@ -167,28 +336,24 @@ const downloadInovaCV = (applicant: any) => {
     <th>Total Years of Experience</th>
     <td colspan="3">${a.experience_years || 0} Years &nbsp; ${a.experience_months || 0} Months</td>
   </tr>
-  <tr>
-    <th rowspan="${Math.max(techData.length > 0 ? Math.ceil(techData.length / 2) : 1, 1)}">Technology Highlights</th>
-    ${techData.length > 0 ? `
-        <td style="padding:5px 8px;border:1px solid #ccc;font-size:12px;">${techData[0]?.tech || ''}</td>
-        <td style="padding:5px 8px;border:1px solid #ccc;font-size:12px;text-align:center;width:60px">${techData[0]?.years ? techData[0].years + 'Y' : ''}</td>
-        <td style="padding:5px 8px;border:1px solid #ccc;font-size:12px;">${techData[1]?.tech || ''}</td>
-        <td style="padding:5px 8px;border:1px solid #ccc;font-size:12px;text-align:center;width:60px">${techData[1]?.years ? techData[1].years + 'Y' : ''}</td>
-    ` : '<td colspan="4"></td>'}
+  ${techData.length > 0 ? `<tr>
+    <th rowspan="${Math.max(Math.ceil(techData.length / 2), 1)}">Technology Highlights</th>
+    <td>${techData[0]?.tech || ''}</td>
+    <td style="text-align:center;width:60px">${techData[0]?.years ? techData[0].years + 'Y' : ''}</td>
+    <td>${techData[1]?.tech || ''}</td>
+    <td style="text-align:center;width:60px">${techData[1]?.years ? techData[1].years + 'Y' : ''}</td>
   </tr>
   ${techData.slice(2).reduce((rows: string, _: any, i: number, arr: any[]) => {
     if (i % 2 === 0) {
-      const left = arr[i] || { tech: '', years: '' }
-      const right = arr[i + 1] || { tech: '', years: '' }
       return rows + `<tr>
-        <td style="padding:5px 8px;border:1px solid #ccc;">${left.tech}</td>
-        <td style="padding:5px 8px;border:1px solid #ccc;text-align:center;width:60px">${left.years ? left.years + 'Y' : ''}</td>
-        <td style="padding:5px 8px;border:1px solid #ccc;">${right.tech}</td>
-        <td style="padding:5px 8px;border:1px solid #ccc;text-align:center;width:60px">${right.years ? right.years + 'Y' : ''}</td>
+        <td>${arr[i]?.tech || ''}</td>
+        <td style="text-align:center;width:60px">${arr[i]?.years ? arr[i].years + 'Y' : ''}</td>
+        <td>${arr[i+1]?.tech || ''}</td>
+        <td style="text-align:center;width:60px">${arr[i+1]?.years ? arr[i+1].years + 'Y' : ''}</td>
       </tr>`
     }
     return rows
-  }, '')}
+  }, '')}` : '<tr><th>Technology Highlights</th><td colspan="3"></td></tr>'}
   <tr>
     <th>Domain Experience</th>
     <td colspan="3">${a.domain_experience || ''}</td>
@@ -197,7 +362,7 @@ const downloadInovaCV = (applicant: any) => {
 
 <div class="section-title">Key Skills</div>
 <table>
-  <tr><th>Languages</th><td>${ks.languages || ''}</td></tr>
+  <tr><th>Languages</th><td>${langDisplay}</td></tr>
   <tr><th>Frameworks</th><td>${ks.frameworks || ''}</td></tr>
   <tr><th>Databases</th><td>${ks.databases || ''}</td></tr>
   <tr><th>Enterprise</th><td></td></tr>
@@ -214,7 +379,6 @@ const downloadInovaCV = (applicant: any) => {
 <div class="section-title">Experience</div>
 <div style="font-weight:bold;font-size:13px;margin:8px 0 6px;text-transform:uppercase;">Inova IT Systems (Pvt) Ltd</div>
 <pre>${a.professional_qualifications || ''}</pre>
-
 </body></html>`
 
     const blob = new Blob([html], { type: 'text/html' })
@@ -225,9 +389,10 @@ const downloadInovaCV = (applicant: any) => {
     link.click()
   }
 
+  // ─── Export CSV ──────────────────────────────────────────────────────────────
   const exportCSV = () => {
     const headers = ['Name', 'Email', 'Phone', 'Role', 'Status', 'Experience', 'Location', 'Skills', 'Degree', 'Submitted']
-    const rows = applicants.map(a => {
+    const rows = filteredApplicants.map(a => {
       const ed = a.extracted_data || {}
       return [a.full_name, a.email, a.phone || '', a.desired_role, a.status,
         `${a.experience_years || 0}Y ${a.experience_months || 0}M`,
@@ -240,6 +405,7 @@ const downloadInovaCV = (applicant: any) => {
     const link = document.createElement('a'); link.href = url; link.download = 'applicants.csv'; link.click()
   }
 
+  // ─── Login screen ─────────────────────────────────────────────────────────────
   if (!token) return (
     <div style={styles.page}>
       <div style={{ ...styles.card, maxWidth: 380, cursor: 'default' }}>
@@ -257,16 +423,20 @@ const downloadInovaCV = (applicant: any) => {
     </div>
   )
 
+  // ─── Main dashboard ───────────────────────────────────────────────────────────
   return (
     <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
+
       {/* Header */}
       <div style={{ background: '#C41E3A', borderBottom: '1px solid #8B0000', padding: '14px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: '#fff' }}>Inova IT — CV Dashboard</h1>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <span style={{ fontSize: 13, color: '#888' }}>{applicants.length} applicant{applicants.length !== 1 ? 's' : ''}</span>
-          <button onClick={() => setShowRoleManager(!showRoleManager)} style={{ ...styles.secondaryBtn, background: showRoleManager ? '#f0f9f6' : 'transparent', color: '#0f6e56', borderColor: '#0f6e56' }}>⚙ Manage Roles</button>
+          <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>
+            {filteredApplicants.length}{filteredApplicants.length !== applicants.length ? ` / ${applicants.length}` : ''} applicant{applicants.length !== 1 ? 's' : ''}
+          </span>
+          <button onClick={() => setShowRoleManager(!showRoleManager)} style={{ ...styles.secondaryBtn, background: showRoleManager ? '#f0f9f6' : 'transparent', color: showRoleManager ? '#0f6e56' : '#fff', borderColor: showRoleManager ? '#0f6e56' : 'rgba(255,255,255,0.5)' }}>⚙ Manage Roles</button>
           <button onClick={exportCSV} style={{ ...styles.secondaryBtn, color: '#fff', borderColor: 'rgba(255,255,255,0.5)' }}>Export CSV</button>
-          <button onClick={() => { localStorage.removeItem('admin_token'); setToken(null) }} style={{ ...styles.secondaryBtn, color: '#c00' }}>Sign Out</button>
+          <button onClick={() => { localStorage.removeItem('admin_token'); setToken(null) }} style={{ ...styles.secondaryBtn, color: '#ffaaaa', borderColor: 'rgba(255,255,255,0.3)' }}>Sign Out</button>
         </div>
       </div>
 
@@ -293,78 +463,84 @@ const downloadInovaCV = (applicant: any) => {
         </div>
       )}
 
-      {/* Filters */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '14px 28px', display: 'flex', gap: 12, flexWrap: 'wrap' as const, alignItems: 'flex-end' }}>
-        <div>
-          <label style={styles.label}>🔍 Search anything</label>
-          <input value={searchText} onChange={e => setSearchText(e.target.value)}
-            placeholder="e.g. React, Colombo, MBA..."
-            style={{ ...styles.input, width: 240 }} />
-        </div>
-        <div>
-          <label style={styles.label}>Filter by</label>
-          <select value={filter} onChange={e => { setFilter(e.target.value); setFilterValue('') }} style={styles.select}>
-            <option value="">All applicants</option>
-            <option value="years_experience">Years of Experience (min)</option>
-            <option value="location">Location</option>
-            <option value="skills">Skill / Code Language</option>
-            <option value="methodologies">Methodology (Agile, Scrum…)</option>
-            <option value="degree_level">Degree Level</option>
-            <option value="field_of_study">Field of Study</option>
-            <option value="past_job_titles">Past Job Title</option>
-            <option value="english_level">English Level</option>
-            <option value="desired_role">Desired Role</option>
-            <option value="status">Application Status</option>
-          </select>
-        </div>
-        {filter && (
+      {/* ── Filter Panel ─────────────────────────────────────────────────────── */}
+      <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '14px 28px' }}>
+
+        {/* Search bar — always visible */}
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' as const, alignItems: 'flex-end', marginBottom: 12 }}>
           <div>
-            <label style={styles.label}>Search value</label>
-            {filter === 'status' ? (
-              <select value={filterValue} onChange={e => setFilterValue(e.target.value)} style={styles.select}>
-                <option value="">Any</option>
-                {['New', 'Shortlisted', 'Interviewed', 'Rejected'].map(s => <option key={s}>{s}</option>)}
-              </select>
-            ) : filter === 'degree_level' ? (
-              <select value={filterValue} onChange={e => setFilterValue(e.target.value)} style={styles.select}>
-                <option value="">Any</option>
-                {['Bachelor', 'Master', 'PhD', 'Diploma', 'None'].map(s => <option key={s}>{s}</option>)}
-              </select>
-            ) : filter === 'english_level' ? (
-              <select value={filterValue} onChange={e => setFilterValue(e.target.value)} style={styles.select}>
-                <option value="">Any</option>
-                {['Native', 'Fluent', 'Intermediate', 'Basic'].map(s => <option key={s}>{s}</option>)}
-              </select>
-            ) : (
-              <input value={filterValue} onChange={e => setFilterValue(e.target.value)}
-                placeholder={filter === 'years_experience' ? 'e.g. 3' : 'Type to search...'}
-                style={styles.input} />
-            )}
+            <label style={styles.label}>🔍 Search anything</label>
+            <input value={searchText} onChange={e => setSearchText(e.target.value)}
+              placeholder="e.g. React, Colombo, MBA..."
+              style={{ ...styles.input, width: 260 }} />
           </div>
-        )}
-        <div>
-          <label style={styles.label}>From date</label>
-          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={styles.input} />
+          <div>
+            <label style={styles.label}>From date</label>
+            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={styles.input} />
+          </div>
+          <div>
+            <label style={styles.label}>To date</label>
+            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={styles.input} />
+          </div>
+          {hasActiveFilters && (
+            <button onClick={clearAllFilters}
+              style={{ ...styles.secondaryBtn, alignSelf: 'flex-end', color: '#c00', borderColor: '#fcc' }}>
+              ✕ Clear all filters
+            </button>
+          )}
         </div>
-        <div>
-          <label style={styles.label}>To date</label>
-          <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={styles.input} />
+
+        {/* Dynamic filter rows */}
+        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+          {filterRows.map((row, idx) => (
+            <FilterRibbon
+              key={row.id}
+              row={row}
+              index={idx}
+              totalRows={filterRows.length}
+              roles={roles}
+              onChange={updates => updateFilterRow(row.id, updates)}
+              onRemove={() => removeFilterRow(row.id)}
+            />
+          ))}
         </div>
-        {(filter || dateFrom || dateTo || searchText) && (
-          <button onClick={() => { setFilter(''); setFilterValue(''); setDateFrom(''); setDateTo(''); setSearchText('') }}
-            style={{ ...styles.secondaryBtn, alignSelf: 'flex-end' }}>Clear filters</button>
-        )}
+
+        {/* Add filter + AI Rank buttons */}
+        <div style={{ display: 'flex', gap: 10, marginTop: 10, alignItems: 'center' }}>
+          <button onClick={addFilterRow}
+            style={{ padding: '7px 16px', background: '#f0f9f6', border: '1.5px dashed #0f6e56', borderRadius: 8, fontSize: 13, color: '#0f6e56', cursor: 'pointer', fontWeight: 500 }}>
+            + Add another filter
+          </button>
+
+          {filteredApplicants.length > 0 && (
+            <button onClick={runAiRanking} disabled={aiRanking}
+              style={{ padding: '7px 16px', background: aiRanking ? '#eee' : '#1a3a8f', border: 'none', borderRadius: 8, fontSize: 13, color: aiRanking ? '#999' : '#fff', cursor: aiRanking ? 'not-allowed' : 'pointer', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
+              {aiRanking ? '⏳ AI is ranking...' : '✨ AI Rank Results'}
+            </button>
+          )}
+
+          {filteredApplicants.length > 0 && (
+            <span style={{ fontSize: 12, color: '#888' }}>
+              {filteredApplicants.length} match{filteredApplicants.length !== 1 ? 'es' : ''}
+              {filteredApplicants.length !== applicants.length && ` (of ${applicants.length} total)`}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Cards */}
       <div style={{ padding: '24px 28px' }}>
         {loading ? (
           <p style={{ color: '#888', textAlign: 'center' as const, marginTop: 60 }}>Loading applicants…</p>
-        ) : applicants.length === 0 ? (
-          <p style={{ color: '#888', textAlign: 'center' as const, marginTop: 60 }}>No applicants found.</p>
+        ) : filteredApplicants.length === 0 ? (
+          <p style={{ color: '#888', textAlign: 'center' as const, marginTop: 60 }}>
+            {applicants.length === 0 ? 'No applicants yet.' : 'No applicants match the current filters.'}
+          </p>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
-            {applicants.map(a => <ApplicantCard key={a.id} applicant={a} onSelect={setSelected} onUpdate={updateApplicant} onDelete={deleteApplicant} />)}
+            {filteredApplicants.map((a, idx) => (
+              <ApplicantCard key={a.id} applicant={a} rank={aiRanking ? undefined : idx + 1} onSelect={setSelected} onUpdate={updateApplicant} onDelete={deleteApplicant} />
+            ))}
           </div>
         )}
       </div>
@@ -380,22 +556,133 @@ const downloadInovaCV = (applicant: any) => {
   )
 }
 
-function ApplicantCard({ applicant: a, onSelect, onUpdate, onDelete }: any) {
-  const ed = a.extracted_data || {}
+// ─── Filter Ribbon Component ───────────────────────────────────────────────────
+function FilterRibbon({ row, index, totalRows, roles, onChange, onRemove }: {
+  row: FilterRow
+  index: number
+  totalRows: number
+  roles: {id: string, title: string}[]
+  onChange: (updates: Partial<FilterRow>) => void
+  onRemove: () => void
+}) {
   return (
-    <div style={styles.card} onClick={() => onSelect(a)}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' as const, alignItems: 'flex-end', padding: '10px 14px', background: index % 2 === 0 ? '#fafafa' : '#f4f4f4', borderRadius: 8, border: '1px solid #eee', position: 'relative' as const }}>
+
+      {/* Row label */}
+      <div style={{ alignSelf: 'center', fontSize: 11, color: '#bbb', fontWeight: 600, minWidth: 20 }}>
+        {index === 0 ? 'IF' : 'AND'}
+      </div>
+
+      {/* Filter by dropdown */}
+      <div>
+        <label style={styles.label}>Filter by</label>
+        <select
+          value={row.filter}
+          onChange={e => onChange({ filter: e.target.value, filterValue: '', languageType: '' })}
+          style={styles.select}
+        >
+          <option value="">All applicants</option>
+          {FILTER_OPTIONS.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Language type box — only for language_level */}
+      {row.filter === 'language_level' && (
+        <div>
+          <label style={styles.label}>Language type</label>
+          <input
+            value={row.languageType}
+            onChange={e => onChange({ languageType: e.target.value })}
+            placeholder="e.g. French, Sinhala..."
+            style={{ ...styles.input, width: 160 }}
+          />
+        </div>
+      )}
+
+      {/* Search value input */}
+      {row.filter && (
+        <div>
+          <label style={styles.label}>Search value</label>
+          {row.filter === 'status' ? (
+            <select value={row.filterValue} onChange={e => onChange({ filterValue: e.target.value })} style={styles.select}>
+              <option value="">Any</option>
+              {['New', 'Shortlisted', 'Interviewed', 'Rejected'].map(s => <option key={s}>{s}</option>)}
+            </select>
+          ) : row.filter === 'degree_level' ? (
+            <select value={row.filterValue} onChange={e => onChange({ filterValue: e.target.value })} style={styles.select}>
+              <option value="">Any</option>
+              {['Bachelor', 'Master', 'PhD', 'Diploma', 'None'].map(s => <option key={s}>{s}</option>)}
+            </select>
+          ) : row.filter === 'language_level' ? (
+            <select value={row.filterValue} onChange={e => onChange({ filterValue: e.target.value })} style={styles.select}>
+              <option value="">Any level</option>
+              <option value="Basic">Basic (A1/A2)</option>
+              <option value="Conversational">Conversational (B1/B2)</option>
+              <option value="Fluent">Fluent (C1)</option>
+              <option value="Native">Native (C2)</option>
+            </select>
+          ) : row.filter === 'desired_role' ? (
+            <select value={row.filterValue} onChange={e => onChange({ filterValue: e.target.value })} style={styles.select}>
+              <option value="">Any role</option>
+              {roles.map(r => <option key={r.id} value={r.title}>{r.title}</option>)}
+              <option value="__custom__" disabled>— or type below —</option>
+            </select>
+          ) : (
+            <input
+              value={row.filterValue}
+              onChange={e => onChange({ filterValue: e.target.value })}
+              placeholder={row.filter === 'years_experience' ? 'e.g. 3' : 'Type to filter...'}
+              style={styles.input}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Remove button — show if there's more than 1 row OR row has data */}
+      {(totalRows > 1 || row.filter || row.filterValue) && (
+        <button
+          onClick={onRemove}
+          title="Remove this filter"
+          style={{ alignSelf: 'flex-end', padding: '8px 10px', background: '#fff0f0', border: '1px solid #fcc', borderRadius: 6, fontSize: 13, color: '#c00', cursor: 'pointer', lineHeight: 1 }}
+        >
+          ✕
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ─── Applicant Card ────────────────────────────────────────────────────────────
+function ApplicantCard({ applicant: a, rank, onSelect, onUpdate, onDelete }: any) {
+  const ed = a.extracted_data || {}
+  const ks = a.key_skills || {}
+
+  const langDisplay = Array.isArray(ks.languages)
+    ? ks.languages.slice(0, 2).map((l: any) => `${l.language}${l.proficiency ? ` (${l.proficiency})` : ''}`).join(', ')
+    : ''
+
+  return (
+    <div style={{ ...styles.card, position: 'relative' as const }} onClick={() => onSelect(a)}>
+      {rank && (
+        <div style={{ position: 'absolute' as const, top: 10, right: 10, background: '#f0f0f0', borderRadius: 20, fontSize: 11, color: '#888', padding: '2px 8px', fontWeight: 600 }}>
+          #{rank}
+        </div>
+      )}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10, paddingRight: rank ? 36 : 0 }}>
         <div>
           <div style={{ fontWeight: 600, fontSize: 15 }}>{a.full_name}</div>
           <div style={{ fontSize: 13, color: '#666', marginTop: 2 }}>{a.desired_role}</div>
         </div>
-        <span style={{ background: STATUS_COLORS[a.status] + '18', color: STATUS_COLORS[a.status], fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20 }}>{a.status}</span>
+        <span style={{ background: STATUS_COLORS[a.status] + '18', color: STATUS_COLORS[a.status], fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, flexShrink: 0 }}>{a.status}</span>
       </div>
       <div style={{ fontSize: 13, color: '#555', marginBottom: 8 }}>
         <div>📧 {a.email}</div>
         {ed.location && <div>📍 {ed.location}</div>}
         {(a.experience_years != null || a.experience_months != null) && <div>⏱ {a.experience_years || 0}Y {a.experience_months || 0}M experience</div>}
         {ed.degree_level && <div>🎓 {ed.degree_level}{ed.field_of_study ? ` · ${ed.field_of_study}` : ''}</div>}
+        {langDisplay && <div>🌐 {langDisplay}</div>}
       </div>
       {a.selected_roles?.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4, marginBottom: 6 }}>
@@ -421,6 +708,7 @@ function ApplicantCard({ applicant: a, onSelect, onUpdate, onDelete }: any) {
   )
 }
 
+// ─── Applicant Detail Modal ────────────────────────────────────────────────────
 function ApplicantDetail({ applicant: a, onClose, onUpdate, onDelete, onDownloadInova }: any) {
   const ed = a.extracted_data || {}
   const ks = a.key_skills || {}
@@ -432,6 +720,10 @@ function ApplicantDetail({ applicant: a, onClose, onUpdate, onDelete, onDownload
     await onUpdate(a.id, { admin_notes: notes })
     setSaving(false)
   }
+
+  // Build language display
+  const languageRows: any[] = Array.isArray(ks.languages) ? ks.languages : []
+  const hasStructuredLangs = languageRows.length > 0
 
   return (
     <div style={{ background: '#fff', borderRadius: 14, width: '100%', maxWidth: 680, maxHeight: '90vh', overflowY: 'auto' as const, padding: 32 }}>
@@ -487,9 +779,23 @@ function ApplicantDetail({ applicant: a, onClose, onUpdate, onDelete, onDownload
         )}
       </Section>
 
-      {(ks.languages || ks.frameworks || ks.databases || ks.other) && (
+      {(hasStructuredLangs || ks.frameworks || ks.databases || ks.other || (!hasStructuredLangs && ks.languages)) && (
         <Section title="Key Skills">
-          {ks.languages && <Row label="Languages" value={ks.languages} />}
+          {/* Languages — structured or legacy string */}
+          {hasStructuredLangs ? (
+            <div style={{ marginBottom: 8 }}>
+              <span style={{ fontSize: 13, color: '#888', display: 'block', marginBottom: 4 }}>Languages</span>
+              <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6 }}>
+                {languageRows.map((l: any, i: number) => (
+                  <span key={i} style={{ background: '#e8f0ff', borderRadius: 6, padding: '3px 10px', fontSize: 13, color: '#1a3a8f' }}>
+                    {l.language}{l.proficiency ? <span style={{ color: '#666', fontSize: 11 }}> · {l.proficiency}</span> : ''}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : ks.languages ? (
+            <Row label="Languages" value={ks.languages} />
+          ) : null}
           {ks.frameworks && <Row label="Frameworks" value={ks.frameworks} />}
           {ks.databases && <Row label="Databases" value={ks.databases} />}
           {ks.other && <Row label="Other" value={ks.other} />}
@@ -579,5 +885,5 @@ const styles: Record<string, React.CSSProperties> = {
   input: { padding: '8px 11px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, outline: 'none' },
   select: { padding: '8px 11px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, background: '#fff', cursor: 'pointer' },
   btn: { background: '#C41E3A', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', padding: '10px 20px' },
-  secondaryBtn: { background: 'transparent', border: '1px solid #C41E3A', borderRadius: 8, fontSize: 13, cursor: 'pointer', padding: '7px 14px', color: '#C41E3A' },
+  secondaryBtn: { background: 'transparent', border: '1px solid #ddd', borderRadius: 8, fontSize: 13, cursor: 'pointer', padding: '7px 14px' },
 }
