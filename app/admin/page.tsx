@@ -1118,10 +1118,14 @@ function ApplicantDetail({ applicant: a, onClose, onUpdate, onDelete, onDownload
         <div style={{ display: 'flex', gap: 8 }}>
           {['New','Shortlisted','Interviewed','Rejected'].map(s => (
             <button key={s} onClick={() => onUpdate(a.id, { status: s })}
-              style={{ padding: '6px 14px', borderRadius: 20, border: `1.5px solid ${STATUS_COLORS[s]}`, background: a.status === s ? STATUS_COLORS[s] : 'transparent', color: a.status === s ? '#fff' : STATUS_COLORS[s], fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
+            style={{ padding: '6px 14px', borderRadius: 20, border: `1.5px solid ${STATUS_COLORS[s]}`, background: a.status === s ? STATUS_COLORS[s] : 'transparent', color: a.status === s ? '#fff' : STATUS_COLORS[s], fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
               {s}
             </button>
           ))}
+          <a href={`mailto:${a.email}`}
+          style={{ padding: '6px 14px', borderRadius: 20, border: '1.5px solid #0f6e56', background: 'transparent', color: '#0f6e56', fontSize: 13, fontWeight: 500, cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }}>
+            Send Email
+          </a>
         </div>
       </div>
 
