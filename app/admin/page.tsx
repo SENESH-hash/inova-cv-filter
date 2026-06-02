@@ -1266,21 +1266,6 @@ function ApplicantDetail({ applicant: a, onClose, onUpdate, onDelete, onDownload
         </Section>
       )}
 
-      <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' as const }}>
-        <a href={a.cv_file_url} target="_blank" rel="noreferrer"
-          style={{ padding: '9px 18px', background: '#0f6e56', color: '#fff', borderRadius: 8, fontSize: 14, fontWeight: 500, textDecoration: 'none' }}>
-          📄 Download CV
-        </a>
-        <button onClick={() => onDownloadInova(a)}
-          style={{ padding: '9px 18px', background: '#1a3a8f', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>
-          🏢 Download Inova CV
-        </button>
-        <button onClick={() => onDelete(a.id)}
-          style={{ padding: '9px 18px', background: '#fff0f0', color: '#c00', border: '1px solid #fcc', borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>
-          🗑 Delete Applicant
-        </button>
-      </div>
-
       <Section title="Admin Notes (private)">
         <textarea value={notes} onChange={e => setNotes(e.target.value)}
           style={{ width: '100%', minHeight: 80, padding: 10, border: '1px solid #ddd', borderRadius: 8, fontSize: 14, resize: 'vertical' as const, boxSizing: 'border-box' as const }} />
