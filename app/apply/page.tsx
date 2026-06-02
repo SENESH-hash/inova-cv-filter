@@ -120,7 +120,7 @@ export default function ApplyPage() {
     <div style={styles.page}>
       <div style={styles.card}>
         <div style={{ fontSize: 48, marginBottom: 16 }}>Application Received!</div>
-        <h2 style={{ margin: '0 0 8px', color: '#1a1a1a' }}>Application Submitted!</h2>
+        <br/>
         <p style={{ color: '#666', margin: 0 }}>Thank you for your interest in joining Inova IT Systems (PVT) LTD. We have successfully received your CV. Our talent acquisition team reviews every application on a rolling basis. If your experience aligns with our needs, we will reach out to discuss the next steps. In the meantime..</p>
       </div>
     </div>
