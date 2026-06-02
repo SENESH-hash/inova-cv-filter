@@ -37,6 +37,9 @@ export default function ApplyPage() {
     frameworks: '', databases: '', other: ''
   })
   const [file, setFile] = useState<File | null>(null)
+  const [openToOutsourcing, setOpenToOutsourcing] = useState('')
+  const [expectedSalary, setExpectedSalary] = useState('')
+  const [noticePeriod, setNoticePeriod] = useState('')
   const [referralSource, setReferralSource] = useState('')
   const [referralName, setReferralName] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
@@ -100,6 +103,9 @@ export default function ApplyPage() {
     fd.append('selected_roles', JSON.stringify(allRoles))
     fd.append('tech_highlights', JSON.stringify(techHighlights))
     fd.append('key_skills', JSON.stringify(fullKeySkills))
+    fd.append('open_to_outsourcing', openToOutsourcing)
+    fd.append('expected_salary', expectedSalary)
+    fd.append('notice_period', noticePeriod)
     fd.append('referral_source', referralSource)
     fd.append('referral_name', referralName)
     fd.append('cv_file', file)
@@ -214,6 +220,48 @@ export default function ApplyPage() {
             <input name="domain_experience" placeholder="e.g. Banking & Finance, Healthcare, E-commerce"
               value={form.domain_experience} onChange={handle}
               style={{ ...styles.input, width: '100%', boxSizing: 'border-box' as const }} />
+          </div>
+
+          {/* Outsourcing / Salary / Notice Period */}
+          <div style={{ marginBottom: 20 }}>
+            <label style={styles.label}>Are you open to outsourcing opportunities?</label>
+            <div style={{ display: 'flex', gap: 16, marginTop: 6 }}>
+              {['Yes', 'No'].map(opt => (
+                <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
+                  <input type="radio" name="outsourcing" value={opt}
+                    checked={openToOutsourcing === opt}
+                    onChange={() => setOpenToOutsourcing(opt)}
+                    style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                  {opt}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 20 }}>
+            <label style={styles.label}>Desired Compensation (please specify currency)</label>
+            <input
+              placeholder="e.g. LKR 150,000 / USD 1,500"
+              value={expectedSalary}
+              onChange={e => setExpectedSalary(e.target.value)}
+              style={{ ...styles.input, width: '100%', boxSizing: 'border-box' as const }}
+            />
+          </div>
+
+          <div style={{ marginBottom: 20 }}>
+            <label style={styles.label}>Notice Period</label>
+            <select
+              value={noticePeriod}
+              onChange={e => setNoticePeriod(e.target.value)}
+              style={{ ...styles.select, width: '100%', boxSizing: 'border-box' as const }}
+            >
+              <option value="">Select notice period...</option>
+              <option value="Immediate">Immediate</option>
+              <option value="1 Week">1 Week</option>
+              <option value="2 Weeks">2 Weeks</option>
+              <option value="1 Month">1 Month</option>
+              <option value="2+ Months">2+ Months</option>
+            </select>
           </div>
 
           {/* Key Skills */}

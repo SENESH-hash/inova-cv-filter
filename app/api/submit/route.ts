@@ -66,6 +66,9 @@ export async function POST(req: NextRequest) {
     const professionalQualifications = formData.get('professional_qualifications') as string
     const referralSource = formData.get('referral_source') as string
     const referralName = formData.get('referral_name') as string
+    const openToOutsourcing = formData.get('open_to_outsourcing') as string
+    const expectedSalary = formData.get('expected_salary') as string
+    const noticePeriod = formData.get('notice_period') as string
     const cvFile = formData.get('cv_file') as File
 
     if (!fullName || !email || !cvFile) {
@@ -111,6 +114,9 @@ export async function POST(req: NextRequest) {
       domain_experience: domainExperience || null,
       key_skills: keySkills,
       professional_qualifications: professionalQualifications || null,
+      open_to_outsourcing: openToOutsourcing || null,
+      expected_salary: expectedSalary || null,
+      notice_period: noticePeriod || null,
       extracted_data: extractedData,
     })
 

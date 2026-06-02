@@ -1204,6 +1204,14 @@ function ApplicantDetail({ applicant: a, onClose, onUpdate, onDelete, onDownload
         {ed.summary && <div style={{ marginTop: 8, fontSize: 13, color: '#555', fontStyle: 'italic', background: '#f9f9f9', borderRadius: 8, padding: '10px 12px' }}>{ed.summary}</div>}
       </Section>
 
+      {(a.open_to_outsourcing || a.expected_salary || a.notice_period) && (
+        <Section title="Availability & Compensation">
+          {a.open_to_outsourcing && <Row label="Open to Outsourcing" value={a.open_to_outsourcing} />}
+          {a.expected_salary && <Row label="Desired Compensation" value={a.expected_salary} />}
+          {a.notice_period && <Row label="Notice Period" value={a.notice_period} />}
+        </Section>
+      )}
+
       {a.referral_source && (
         <Section title="Referral">
           <Row label="Source" value={a.referral_source} />
