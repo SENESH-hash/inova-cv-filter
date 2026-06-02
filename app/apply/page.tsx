@@ -119,9 +119,9 @@ export default function ApplyPage() {
   if (status === 'success') return (
     <div style={styles.page}>
       <div style={styles.card}>
-        <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>Application Received!</div>
         <h2 style={{ margin: '0 0 8px', color: '#1a1a1a' }}>Application Submitted!</h2>
-        <p style={{ color: '#666', margin: 0 }}>Thank you for applying to Inova IT Systems (Pvt) Ltd. We'll review your CV and be in touch soon.</p>
+        <p style={{ color: '#666', margin: 0 }}>Thank you for your interest in joining Inova IT Systems (PVT) LTD. We have successfully received your CV. Our talent acquisition team reviews every application on a rolling basis. If your experience aligns with our needs, we will reach out to discuss the next steps. In the meantime..</p>
       </div>
     </div>
   )
