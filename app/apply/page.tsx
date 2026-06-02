@@ -86,6 +86,9 @@ export default function ApplyPage() {
     if (!form.linkedin_url.trim()) {
       setErrorMsg('LinkedIn URL is required.'); setStatus('error'); return
     }
+    if (!referralSource) {
+      setErrorMsg('Please tell us how you heard about us.'); setStatus('error'); return
+    }
     setStatus('loading')
 
     // Build key_skills with structured languages array
@@ -334,7 +337,7 @@ export default function ApplyPage() {
 
           {/* Referral */}
           <div style={{ marginBottom: 20 }}>
-            <label style={styles.label}>How did you hear about us?</label>
+            <label style={styles.label}>How did you hear about us? *</label>
             <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 8, marginBottom: referralSource === 'Referrals and Networking' ? 10 : 0 }}>
               {REFERRAL_OPTIONS.map(opt => (
                 <button key={opt} type="button"
