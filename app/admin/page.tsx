@@ -298,21 +298,25 @@ export default function AdminPage() {
   }
 
   // ─── Screen CVs for a job ────────────────────────────────────────────────────
-  const screenCVsForJob = async (jobId: string) => {
+  const screenCVsForJob = async (jobId: string, topN: number) => {
     setScreeningJob(jobId)
     setScreenedResults(null)
     try {
       const res = await fetch(`/api/admin/job-openings/${jobId}/screen`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ topN }),
       })
-      if (res.ok) {
-        const { rankedApplicants } = await res.json()
-        setScreenedResults({ jobId, applicants: rankedApplicants })
-        // Switch to CV tab to show results
-        setActiveTab('cvs')
-        setSelectedJob(null)
+      if (!res.ok) {
+        const { error } = await res.json()
+        alert(error || 'Screening failed')
+        setScreeningJob(null)
+        return
       }
+      const { rankedApplicants } = await res.json()
+      setScreenedResults({ jobId, applicants: rankedApplicants })
+      setActiveTab('cvs')
+      setSelectedJob(null)
     } catch (err) { console.error('Screening error:', err) }
     setScreeningJob(null)
   }
@@ -652,7 +656,7 @@ ${techData.length>0?`<tr><th rowspan="${Math.max(Math.ceil(techData.length/2),1)
                   onSelect={() => setSelectedJob(job)}
                   onDelete={() => deleteJob(job.id)}
                   onToggleStatus={() => toggleJobStatus(job)}
-                  onScreen={() => screenCVsForJob(job.id)}
+                  onScreen={(topN) => screenCVsForJob(job.id, topN)}
                 />
               ))}
             </div>
@@ -679,7 +683,7 @@ ${techData.length>0?`<tr><th rowspan="${Math.max(Math.ceil(techData.length/2),1)
             onClose={() => setSelectedJob(null)}
             onDelete={() => { deleteJob(selectedJob.id) }}
             onToggleStatus={() => toggleJobStatus(selectedJob)}
-            onScreen={() => screenCVsForJob(selectedJob.id)}
+            onScreen={(topN) => screenCVsForJob(selectedJob.id, topN)}
           />
         </div>
       )}
@@ -702,8 +706,9 @@ function JobCard({ job, isScreening, onSelect, onDelete, onToggleStatus, onScree
   onSelect: () => void
   onDelete: () => void
   onToggleStatus: () => void
-  onScreen: () => void
+  onScreen: (topN: number) => void
 }) {
+  const [showTopN, setShowTopN] = useState(false)
   return (
     <div style={{ ...styles.card, cursor: 'default', position: 'relative' as const }}>
       {/* Status badge */}
@@ -738,10 +743,30 @@ function JobCard({ job, isScreening, onSelect, onDelete, onToggleStatus, onScree
 
       {/* Action buttons */}
       <div style={{ display: 'flex', gap: 6 }}>
-        <button onClick={onScreen} disabled={isScreening}
-          style={{ flex: 2, padding: '7px', background: isScreening ? '#eee' : '#1a3a8f', border: 'none', borderRadius: 6, fontSize: 12, color: isScreening ? '#999' : '#fff', cursor: isScreening ? 'not-allowed' : 'pointer', fontWeight: 600 }}>
-          {isScreening ? 'Screening...' : 'Screen CVs'}
-        </button>
+        <div style={{ flex: 2, position: 'relative' as const }}>
+          {!showTopN ? (
+            <button onClick={() => setShowTopN(true)} disabled={isScreening}
+              style={{ width: '100%', padding: '7px', background: isScreening ? '#eee' : '#1a3a8f', border: 'none', borderRadius: 6, fontSize: 12, color: isScreening ? '#999' : '#fff', cursor: isScreening ? 'not-allowed' : 'pointer', fontWeight: 600 }}>
+              {isScreening ? 'Screening...' : 'Screen CVs'}
+            </button>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ fontSize: 11, color: '#555', whiteSpace: 'nowrap' as const }}>Top:</span>
+              <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' as const }}>
+                {[1,2,3,4,5,6,7,8,9,10].map(n => (
+                  <button key={n} onClick={() => { setShowTopN(false); onScreen(n) }}
+                    style={{ padding: '4px 7px', background: '#1a3a8f', border: 'none', borderRadius: 5, fontSize: 12, color: '#fff', cursor: 'pointer', fontWeight: 600, minWidth: 26 }}>
+                    {n}
+                  </button>
+                ))}
+                <button onClick={() => setShowTopN(false)}
+                  style={{ padding: '4px 6px', background: '#f0f0f0', border: '1px solid #ddd', borderRadius: 5, fontSize: 11, color: '#888', cursor: 'pointer' }}>
+                  ✕
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
         <button onClick={onToggleStatus}
           style={{ flex: 1, padding: '7px', background: '#f9fafb', border: '1px solid #ddd', borderRadius: 6, fontSize: 12, color: '#555', cursor: 'pointer' }}>
           {job.status === 'Open' ? 'Close' : 'Reopen'}
@@ -763,7 +788,7 @@ function JobDetail({ job, isScreening, totalApplicants, onClose, onDelete, onTog
   onClose: () => void
   onDelete: () => void
   onToggleStatus: () => void
-  onScreen: () => void
+  onScreen: (topN: number) => void
 }) {
   return (
     <div style={{ background: '#fff', borderRadius: 14, width: '100%', maxWidth: 660, maxHeight: '90vh', overflowY: 'auto' as const, padding: 32 }}>
@@ -832,10 +857,16 @@ function JobDetail({ job, isScreening, totalApplicants, onClose, onDelete, onTog
 
       {/* Actions */}
       <div style={{ display: 'flex', gap: 10, marginTop: 24, flexWrap: 'wrap' as const }}>
-        <button onClick={onScreen} disabled={isScreening}
-          style={{ flex: 1, minWidth: 160, padding: '11px 20px', background: isScreening ? '#eee' : '#1a3a8f', border: 'none', borderRadius: 8, fontSize: 14, color: isScreening ? '#999' : '#fff', cursor: isScreening ? 'not-allowed' : 'pointer', fontWeight: 600 }}>
-          {isScreening ? 'Screening CVs...' : `Screen ${totalApplicants} CVs with AI`}
-        </button>
+        <select
+          disabled={isScreening}
+          defaultValue=""
+          onChange={e => { if (e.target.value) { onScreen(parseInt(e.target.value)); (e.target as HTMLSelectElement).value = '' } }}
+          style={{ flex: 1, minWidth: 160, padding: '11px 14px', background: isScreening ? '#eee' : '#1a3a8f', border: 'none', borderRadius: 8, fontSize: 14, color: isScreening ? '#999' : '#fff', cursor: isScreening ? 'not-allowed' : 'pointer', fontWeight: 600 }}>
+          <option value="" disabled>{isScreening ? 'Screening CVs...' : `Screen CVs — pick top N`}</option>
+          {[1,2,3,4,5,6,7,8,9,10].map(n => (
+            <option key={n} value={n} style={{ background: '#fff', color: '#111' }}>Show top {n}</option>
+          ))}
+        </select>
         <button onClick={onToggleStatus}
           style={{ padding: '11px 20px', background: '#f9fafb', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, color: '#555', cursor: 'pointer' }}>
           {job.status === 'Open' ? 'Close Job' : 'Reopen Job'}

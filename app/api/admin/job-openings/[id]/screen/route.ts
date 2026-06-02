@@ -14,6 +14,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!verifyToken(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id: jobId } = await params
+  const body = await req.json().catch(() => ({}))
+  const topN: number = body.topN && body.topN > 0 ? parseInt(body.topN) : 0
 
   // 1. Fetch the job opening
   const { data: job, error: jobError } = await supabaseAdmin
@@ -32,6 +34,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   if (appError) return NextResponse.json({ error: appError.message }, { status: 500 })
   if (!applicants || applicants.length === 0) return NextResponse.json({ rankedApplicants: [] })
+
+  // Check we have enough CVs
+  if (topN > 0 && applicants.length < topN) {
+    return NextResponse.json(
+      { error: `Not enough CVs. You requested top ${topN} but only ${applicants.length} CV${applicants.length !== 1 ? 's' : ''} exist in the system.` },
+      { status: 400 }
+    )
+  }
 
   // 3. Build a concise summary of each applicant for the AI
   const applicantSummaries = applicants.map((a: any) => {
@@ -131,10 +141,12 @@ Sort by score descending.`
   // Build a map for quick lookup
   const scoreMap = new Map(scores.map(s => [s.id, s.score]))
 
-  // Attach scores to applicant objects and sort
-  const rankedApplicants = applicants
+  // Attach scores to applicant objects, sort, and slice to topN
+  const allRanked = applicants
     .map((a: any) => ({ ...a, match_score: scoreMap.get(a.id) ?? 0 }))
     .sort((a: any, b: any) => b.match_score - a.match_score)
+
+  const rankedApplicants = topN > 0 ? allRanked.slice(0, topN) : allRanked
 
   return NextResponse.json({ rankedApplicants })
 }
