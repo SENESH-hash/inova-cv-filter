@@ -58,6 +58,8 @@ export async function POST(req: NextRequest) {
     const selectedRoles = selectedRolesRaw ? JSON.parse(selectedRolesRaw) : []
     const techHighlightsRaw = formData.get('tech_highlights') as string
     const techHighlights = techHighlightsRaw ? JSON.parse(techHighlightsRaw) : []
+    const techStackRaw = formData.get('tech_stack') as string
+    const techStack = techStackRaw ? JSON.parse(techStackRaw) : []
     const keySkillsRaw = formData.get('key_skills') as string
     const keySkills = keySkillsRaw ? JSON.parse(keySkillsRaw) : {}
     const experienceYears = formData.get('experience_years') as string
@@ -115,6 +117,7 @@ export async function POST(req: NextRequest) {
       experience_years: experienceYears ? parseInt(experienceYears) : null,
       experience_months: experienceMonths ? parseInt(experienceMonths) : null,
       technology_highlights: techHighlights,
+      tech_stack: techStack,
       domain_experience: domainExperience || null,
       key_skills: keySkills,
       professional_qualifications: professionalQualifications || null,

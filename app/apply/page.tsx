@@ -3,6 +3,17 @@ import { useState, useEffect } from 'react'
 
 const REFERRAL_OPTIONS = ['Social Networks', 'Company Website', 'Referrals and Networking', 'LinkedIn Jobs Section']
 
+const TECH_STACK_OPTIONS = [
+  'Java',
+  'Node.js & PHP',
+  'Drools',
+  'ReactJS & Angular',
+  'Web 2.0 Tech',
+  'MySQL & Oracle DB',
+  'Amazon Web Services (AWS)',
+  'Docker & Linux',
+]
+
 const PROFICIENCY_OPTIONS = [
   { value: 'Basic (A1/A2)',        label: 'Basic (A1/A2)' },
   { value: 'Conversational (B1/B2)', label: 'Conversational (B1/B2)' },
@@ -27,6 +38,9 @@ export default function ApplyPage() {
   const [techHighlights, setTechHighlights] = useState([
     { tech: '', years: '' }, { tech: '', years: '' }, { tech: '', years: '' }
   ])
+  const [techStack, setTechStack] = useState(
+    TECH_STACK_OPTIONS.map(name => ({ name, selected: false, years: '' }))
+  )
 
   // Language entries — replaces the single "languages" text field
   const [languageEntries, setLanguageEntries] = useState<LanguageEntry[]>([
@@ -107,6 +121,7 @@ export default function ApplyPage() {
     const allRoles = [...selectedRoles, ...(customRole.trim() ? [customRole.trim()] : [])]
     fd.append('selected_roles', JSON.stringify(allRoles))
     fd.append('tech_highlights', JSON.stringify(techHighlights))
+    fd.append('tech_stack', JSON.stringify(techStack.filter(t => t.selected).map(t => ({ tech: t.name, years: t.years }))))
     fd.append('key_skills', JSON.stringify(fullKeySkills))
     fd.append('open_to_outsourcing', openToOutsourcing)
     fd.append('expected_salary', expectedSalary)
@@ -232,7 +247,37 @@ export default function ApplyPage() {
           {/* Technology Highlights */}
           <div style={{ marginBottom: 20 }}>
             <label style={styles.label}>Technology Highlights</label>
-            <p style={{ fontSize: 12, color: '#888', margin: '0 0 8px' }}>Enter your main technologies and how many years you've used each</p>
+
+            {/* Predefined tech stacks — tick + years */}
+            <p style={{ fontSize: 13, color: '#555', margin: '0 0 8px', fontWeight: 500 }}>Tick the technologies you have experience with, then enter the number of years for each.</p>
+            <div style={{ marginBottom: 18 }}>
+              {techStack.map((t, i) => (
+                <div key={t.name} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, cursor: 'pointer', fontSize: 14 }}>
+                    <input
+                      type="checkbox"
+                      checked={t.selected}
+                      onChange={e => setTechStack(prev => prev.map((x, j) => j === i ? { ...x, selected: e.target.checked, years: e.target.checked ? x.years : '' } : x))}
+                      style={{ width: 16, height: 16, cursor: 'pointer' }}
+                    />
+                    {t.name}
+                  </label>
+                  <input
+                    placeholder="Years"
+                    type="number"
+                    min="0"
+                    value={t.years}
+                    disabled={!t.selected}
+                    onChange={e => setTechStack(prev => prev.map((x, j) => j === i ? { ...x, years: e.target.value } : x))}
+                    style={{ ...styles.input, width: 90, flex: 'none', background: t.selected ? '#fff' : '#f5f5f5' }}
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* Other / additional technologies — free text */}
+            <label style={{ fontSize: 13, color: '#555', fontWeight: 500, display: 'block', marginBottom: 6 }}>Other technologies</label>
+            <p style={{ fontSize: 12, color: '#888', margin: '0 0 8px' }}>Add any other technologies not listed above, and how many years you've used each</p>
             {techHighlights.map((t, i) => (
               <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
                 <input placeholder="Technology (e.g. React JS)" value={t.tech}
