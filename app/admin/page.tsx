@@ -1095,6 +1095,13 @@ function ApplicantCard({ applicant: a, rank, showScore, onSelect, onUpdate, onDe
         {ed.degree_level && <div>🎓 {ed.degree_level}{ed.field_of_study ? ` · ${ed.field_of_study}` : ''}</div>}
         {langDisplay && <div>🌐 {langDisplay}</div>}
       </div>
+      {(a.is_internship || a.work_preference || a.internal_staff_note) && (
+        <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4, marginBottom: 6 }}>
+          {a.is_internship && <span style={{ background: '#fef3c7', color: '#92400e', borderRadius: 4, padding: '2px 7px', fontSize: 11, fontWeight: 600 }}>Internship</span>}
+          {a.work_preference && <span style={{ background: '#e0e7ff', color: '#3730a3', borderRadius: 4, padding: '2px 7px', fontSize: 11, fontWeight: 600 }}>{a.work_preference}</span>}
+          {a.internal_staff_note && <span style={{ background: '#f1f5f9', color: '#475569', borderRadius: 4, padding: '2px 7px', fontSize: 11, fontWeight: 600 }}>Internal Staff</span>}
+        </div>
+      )}
       {a.selected_roles?.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4, marginBottom: 6 }}>
           {a.selected_roles.slice(0, 2).map((r: string) => (
@@ -1205,6 +1212,18 @@ function ApplicantDetail({ applicant: a, onClose, onUpdate, onDelete, onDownload
             ))}
           </div>
         )}
+        {a.tech_stack?.length > 0 && (
+          <div style={{ marginTop: 8 }}>
+            <div style={{ fontSize: 13, color: '#888', marginBottom: 4 }}>Tech Stack (selected)</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6 }}>
+              {a.tech_stack.map((t: any, i: number) => (
+                <span key={i} style={{ background: '#e8f5f1', borderRadius: 6, padding: '3px 10px', fontSize: 13, color: '#0f6e56' }}>
+                  {t.tech}{t.years ? ` · ${t.years}Y` : ''}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </Section>
 
       {(hasStructuredLangs || ks.frameworks || ks.databases || ks.other || (!hasStructuredLangs && ks.languages)) && (
@@ -1251,8 +1270,10 @@ function ApplicantDetail({ applicant: a, onClose, onUpdate, onDelete, onDownload
         {ed.summary && <div style={{ marginTop: 8, fontSize: 13, color: '#555', fontStyle: 'italic', background: '#f9f9f9', borderRadius: 8, padding: '10px 12px' }}>{ed.summary}</div>}
       </Section>
 
-      {(a.open_to_outsourcing || a.expected_salary || a.notice_period) && (
+      {(a.open_to_outsourcing || a.expected_salary || a.notice_period || a.work_preference || a.is_internship) && (
         <Section title="Availability & Compensation">
+          {a.is_internship && <Row label="Applying As" value="Internship" />}
+          {a.work_preference && <Row label="Work Preference" value={a.work_preference} />}
           {a.open_to_outsourcing && <Row label="Open to Outsourcing" value={a.open_to_outsourcing} />}
           {a.expected_salary && <Row label="Desired Compensation" value={a.expected_salary} />}
           {a.notice_period && <Row label="Notice Period" value={a.notice_period} />}
