@@ -42,6 +42,7 @@ export default function ApplyPage() {
   const [noticePeriod, setNoticePeriod] = useState('')
   const [referralSource, setReferralSource] = useState('')
   const [referralName, setReferralName] = useState('')
+  const [internalStaffNote, setInternalStaffNote] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
 
@@ -111,6 +112,7 @@ export default function ApplyPage() {
     fd.append('notice_period', noticePeriod)
     fd.append('referral_source', referralSource)
     fd.append('referral_name', referralName)
+    fd.append('internal_staff_note', internalStaffNote)
     fd.append('cv_file', file)
 
     const res = await fetch('/api/submit', { method: 'POST', body: fd })
@@ -352,6 +354,18 @@ export default function ApplyPage() {
                 onChange={e => setReferralName(e.target.value)}
                 style={{ ...styles.input, width: '100%', boxSizing: 'border-box' as const, marginTop: 8 }} />
             )}
+          </div>
+
+          {/* For Staff Use Only */}
+          <div style={{ marginBottom: 20, background: '#f1f3f5', border: '1px solid #e0e3e7', borderRadius: 10, padding: '14px 16px' }}>
+            <label style={{ ...styles.label, color: '#555' }}>For Staff Use Only</label>
+            <p style={{ fontSize: 12, color: '#888', margin: '0 0 8px' }}>Internal staff only — if you work at Inova IT and are submitting on behalf of the company, enter your name and department here. External applicants, please leave this blank.</p>
+            <input
+              placeholder="e.g. John Silva — HR Department"
+              value={internalStaffNote}
+              onChange={e => setInternalStaffNote(e.target.value)}
+              style={{ ...styles.input, width: '100%', boxSizing: 'border-box' as const }}
+            />
           </div>
 
           {status === 'error' && (

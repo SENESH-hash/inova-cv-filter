@@ -66,6 +66,7 @@ export async function POST(req: NextRequest) {
     const professionalQualifications = formData.get('professional_qualifications') as string
     const referralSource = formData.get('referral_source') as string
     const referralName = formData.get('referral_name') as string
+    const internalStaffNote = formData.get('internal_staff_note') as string
     const openToOutsourcing = formData.get('open_to_outsourcing') as string
     const expectedSalary = formData.get('expected_salary') as string
     const noticePeriod = formData.get('notice_period') as string
@@ -108,6 +109,7 @@ export async function POST(req: NextRequest) {
       cv_file_type: fileType,
       referral_source: referralSource || null,
       referral_name: referralName || null,
+      internal_staff_note: internalStaffNote || null,
       experience_years: experienceYears ? parseInt(experienceYears) : null,
       experience_months: experienceMonths ? parseInt(experienceMonths) : null,
       technology_highlights: techHighlights,
