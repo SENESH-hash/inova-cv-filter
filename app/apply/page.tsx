@@ -43,6 +43,7 @@ export default function ApplyPage() {
   const [referralSource, setReferralSource] = useState('')
   const [referralName, setReferralName] = useState('')
   const [internalStaffNote, setInternalStaffNote] = useState('')
+  const [isInternship, setIsInternship] = useState<'Yes' | 'No' | ''>('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
 
@@ -113,6 +114,7 @@ export default function ApplyPage() {
     fd.append('referral_source', referralSource)
     fd.append('referral_name', referralName)
     fd.append('internal_staff_note', internalStaffNote)
+    fd.append('is_internship', isInternship)
     fd.append('cv_file', file)
 
     const res = await fetch('/api/submit', { method: 'POST', body: fd })
@@ -150,6 +152,34 @@ export default function ApplyPage() {
             <Field label="LinkedIn Profile URL *" name="linkedin_url" value={form.linkedin_url} onChange={handle} required placeholder="https://linkedin.com/in/..." />
           </div>
           <Field label="Portfolio / GitHub URL (Optional)" name="portfolio_url" value={form.portfolio_url} onChange={handle} placeholder="https://github.com/..." />
+
+          {/* For Internships? */}
+          <div style={{ marginBottom: 20 }}>
+            <label style={styles.label}>For Internships?</label>
+            <p style={{ fontSize: 12, color: '#888', margin: '0 0 8px' }}>Are you applying for an internship? If you select "Yes", the fields that don't apply to interns will be hidden.</p>
+            <div style={{ display: 'flex', gap: 16, marginTop: 6 }}>
+              {(['Yes', 'No'] as const).map(opt => (
+                <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="is_internship"
+                    value={opt}
+                    checked={isInternship === opt}
+                    onChange={() => {
+                      setIsInternship(opt)
+                      if (opt === 'Yes') {
+                        setExpectedSalary('')
+                        setOpenToOutsourcing('')
+                        setForm(f => ({ ...f, domain_experience: '' }))
+                      }
+                    }}
+                    style={{ width: 16, height: 16, cursor: 'pointer' }}
+                  />
+                  {opt}
+                </label>
+              ))}
+            </div>
+          </div>
 
           {/* Roles */}
           <div style={{ marginBottom: 20 }}>
@@ -219,15 +249,18 @@ export default function ApplyPage() {
             ))}
           </div>
 
-          {/* Domain Experience */}
+          {/* Domain Experience — hidden for interns */}
+          {isInternship !== 'Yes' && (
           <div style={{ marginBottom: 20 }}>
             <label style={styles.label}>Domain Experience</label>
             <input name="domain_experience" placeholder="e.g. Banking & Finance, Healthcare, E-commerce"
               value={form.domain_experience} onChange={handle}
               style={{ ...styles.input, width: '100%', boxSizing: 'border-box' as const }} />
           </div>
+          )}
 
-          {/* Outsourcing / Salary / Notice Period */}
+          {/* Outsourcing — hidden for interns */}
+          {isInternship !== 'Yes' && (
           <div style={{ marginBottom: 20 }}>
             <label style={styles.label}>Are you open to outsourcing opportunities?</label>
             <div style={{ display: 'flex', gap: 16, marginTop: 6 }}>
@@ -242,7 +275,10 @@ export default function ApplyPage() {
               ))}
             </div>
           </div>
+          )}
 
+          {/* Desired Compensation — hidden for interns */}
+          {isInternship !== 'Yes' && (
           <div style={{ marginBottom: 20 }}>
             <label style={styles.label}>Desired Compensation (please specify currency)</label>
             <input
@@ -252,6 +288,7 @@ export default function ApplyPage() {
               style={{ ...styles.input, width: '100%', boxSizing: 'border-box' as const }}
             />
           </div>
+          )}
 
           <div style={{ marginBottom: 20 }}>
             <label style={styles.label}>Notice Period</label>
