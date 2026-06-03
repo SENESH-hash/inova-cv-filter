@@ -1133,6 +1133,26 @@ function ApplicantDetail({ applicant: a, onClose, onUpdate, onDelete, onDownload
   const [notes, setNotes] = useState(a.admin_notes || '')
   const [saving, setSaving] = useState(false)
   const saveNotes = async () => { setSaving(true); await onUpdate(a.id, { admin_notes: notes }); setSaving(false) }
+
+  // Interview details
+  const iv = a.interview_details || {}
+  const [interviewConducted, setInterviewConducted] = useState<'Yes' | 'No' | ''>(iv.conducted || '')
+  const [interviewedBy, setInterviewedBy] = useState(iv.interviewed_by || '')
+  const [languageProficiency, setLanguageProficiency] = useState(iv.language_proficiency || '')
+  const [communicationSkills, setCommunicationSkills] = useState(iv.communication_skills || '')
+  const [savingInterview, setSavingInterview] = useState(false)
+  const saveInterview = async () => {
+    setSavingInterview(true)
+    await onUpdate(a.id, {
+      interview_details: {
+        conducted: interviewConducted,
+        interviewed_by: interviewedBy,
+        language_proficiency: languageProficiency,
+        communication_skills: communicationSkills,
+      },
+    })
+    setSavingInterview(false)
+  }
   const languageRows: any[] = Array.isArray(ks.languages) ? ks.languages : []
   const hasStructuredLangs = languageRows.length > 0
 
@@ -1292,6 +1312,41 @@ function ApplicantDetail({ applicant: a, onClose, onUpdate, onDelete, onDownload
           style={{ width: '100%', minHeight: 80, padding: 10, border: '1px solid #ddd', borderRadius: 8, fontSize: 14, resize: 'vertical' as const, boxSizing: 'border-box' as const }} />
         <button onClick={saveNotes} style={{ ...styles.btn, marginTop: 8, padding: '8px 20px', width: 'auto' }}>
           {saving ? 'Saving…' : 'Save Notes'}
+        </button>
+      </Section>
+
+      <Section title="Interview">
+        <label style={{ fontSize: 13, color: '#666', marginBottom: 6, display: 'block' }}>Has this applicant been interviewed?</label>
+        <div style={{ display: 'flex', gap: 16, marginBottom: interviewConducted === 'Yes' ? 12 : 0 }}>
+          {(['Yes', 'No'] as const).map(opt => (
+            <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
+              <input type="radio" name="interview_conducted" value={opt} checked={interviewConducted === opt}
+                onChange={() => setInterviewConducted(opt)} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+              {opt}
+            </label>
+          ))}
+        </div>
+        {interviewConducted === 'Yes' && (
+          <div style={{ display: 'grid', gap: 10 }}>
+            <div>
+              <label style={styles.label}>Interviewed By</label>
+              <input value={interviewedBy} onChange={e => setInterviewedBy(e.target.value)}
+                style={{ ...styles.input, width: '100%', boxSizing: 'border-box' as const }} />
+            </div>
+            <div>
+              <label style={styles.label}>Language Proficiency</label>
+              <input value={languageProficiency} onChange={e => setLanguageProficiency(e.target.value)}
+                style={{ ...styles.input, width: '100%', boxSizing: 'border-box' as const }} />
+            </div>
+            <div>
+              <label style={styles.label}>Communication Skills</label>
+              <input value={communicationSkills} onChange={e => setCommunicationSkills(e.target.value)}
+                style={{ ...styles.input, width: '100%', boxSizing: 'border-box' as const }} />
+            </div>
+          </div>
+        )}
+        <button onClick={saveInterview} style={{ ...styles.btn, marginTop: 12, padding: '8px 20px', width: 'auto' }}>
+          {savingInterview ? 'Saving…' : 'Save Interview Details'}
         </button>
       </Section>
     </div>
