@@ -73,6 +73,7 @@ export async function POST(req: NextRequest) {
     const openToOutsourcing = formData.get('open_to_outsourcing') as string
     const expectedSalary = formData.get('expected_salary') as string
     const noticePeriod = formData.get('notice_period') as string
+    const workPreference = formData.get('work_preference') as string
     const cvFile = formData.get('cv_file') as File
 
     if (!fullName || !email || !cvFile) {
@@ -124,6 +125,7 @@ export async function POST(req: NextRequest) {
       open_to_outsourcing: openToOutsourcing || null,
       expected_salary: expectedSalary || null,
       notice_period: noticePeriod || null,
+      work_preference: workPreference || null,
       extracted_data: extractedData,
     })
 

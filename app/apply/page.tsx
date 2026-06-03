@@ -54,6 +54,7 @@ export default function ApplyPage() {
   const [openToOutsourcing, setOpenToOutsourcing] = useState('')
   const [expectedSalary, setExpectedSalary] = useState('')
   const [noticePeriod, setNoticePeriod] = useState('')
+  const [workPreference, setWorkPreference] = useState('')
   const [referralSource, setReferralSource] = useState('')
   const [referralName, setReferralName] = useState('')
   const [internalStaffNote, setInternalStaffNote] = useState('')
@@ -126,6 +127,7 @@ export default function ApplyPage() {
     fd.append('open_to_outsourcing', openToOutsourcing)
     fd.append('expected_salary', expectedSalary)
     fd.append('notice_period', noticePeriod)
+    fd.append('work_preference', workPreference)
     fd.append('referral_source', referralSource)
     fd.append('referral_name', referralName)
     fd.append('internal_staff_note', internalStaffNote)
@@ -349,6 +351,27 @@ export default function ApplyPage() {
               <option value="1 Month">1 Month</option>
               <option value="2+ Months">2+ Months</option>
             </select>
+          </div>
+
+          {/* Work Preference */}
+          <div style={{ marginBottom: 20 }}>
+            <label style={styles.label}>Work Preference</label>
+            <p style={{ fontSize: 12, color: '#888', margin: '0 0 8px' }}>Which work arrangement do you prefer?</p>
+            <div style={{ display: 'flex', gap: 16, marginTop: 6 }}>
+              {['On-Site', 'Hybrid', 'Remote'].map(opt => (
+                <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="work_preference"
+                    value={opt}
+                    checked={workPreference === opt}
+                    onChange={() => setWorkPreference(opt)}
+                    style={{ width: 16, height: 16, cursor: 'pointer' }}
+                  />
+                  {opt}
+                </label>
+              ))}
+            </div>
           </div>
 
           {/* Key Skills */}
