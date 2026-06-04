@@ -1117,7 +1117,10 @@ function ApplicantCard({ applicant: a, rank, showScore, onSelect, onUpdate, onDe
           {ed.skills.length > 4 && <span style={{ fontSize: 11, color: '#999' }}>+{ed.skills.length - 4} more</span>}
         </div>
       )}
-      <div style={{ marginTop: 10, fontSize: 12, color: '#bbb' }}>{new Date(a.submitted_at).toLocaleDateString()}</div>
+      <div style={{ marginTop: 10, fontSize: 12, color: '#bbb' }}>
+        {new Date(a.submitted_at).toLocaleDateString()}
+        {a.updated_at && <span> · Updated {new Date(a.updated_at).toLocaleDateString()}</span>}
+      </div>
       {a.referral_source && <div style={{ marginTop: 6, fontSize: 12, color: '#888', background: '#fffbe6', borderRadius: 5, padding: '4px 8px' }}>👥 Via {a.referral_source}{a.referral_name ? ` (${a.referral_name})` : ''}</div>}
       <div style={{ marginTop: 10, display: 'flex', gap: 6 }} onClick={e => e.stopPropagation()}>
         <button onClick={() => onDelete(a.id)} style={{ flex: 1, padding: '5px', background: '#fff0f0', border: '1px solid #fcc', borderRadius: 6, fontSize: 12, color: '#c00', cursor: 'pointer' }}>🗑 Delete</button>
@@ -1127,10 +1130,104 @@ function ApplicantCard({ applicant: a, rank, showScore, onSelect, onUpdate, onDe
 }
 
 // ─── Applicant Detail Modal ────────────────────────────────────────────────────
+function ApplicantEditForm({ a, onUpdate, onClose }: any) {
+  const ks = a.key_skills || {}
+  const [f, setF] = useState({
+    full_name: a.full_name || '', email: a.email || '', phone: a.phone || '',
+    linkedin_url: a.linkedin_url || '', portfolio_url: a.portfolio_url || '',
+    roles: (a.selected_roles?.length ? a.selected_roles.join(', ') : a.desired_role) || '',
+    experience_years: a.experience_years ?? '', experience_months: a.experience_months ?? '',
+    domain_experience: a.domain_experience || '', expected_salary: a.expected_salary || '',
+    notice_period: a.notice_period || '', work_preference: a.work_preference || '',
+    open_to_outsourcing: a.open_to_outsourcing || '', is_internship: a.is_internship ? 'Yes' : 'No',
+    internal_staff_note: a.internal_staff_note || '', professional_qualifications: a.professional_qualifications || '',
+    frameworks: ks.frameworks || '', databases: ks.databases || '', other: ks.other || '',
+  })
+  const [languages, setLanguages] = useState<any[]>(Array.isArray(ks.languages) ? ks.languages.map((l: any) => ({ language: l.language || '', proficiency: l.proficiency || '' })) : [])
+  const [techHi, setTechHi] = useState<any[]>(Array.isArray(a.technology_highlights) ? a.technology_highlights.map((t: any) => ({ tech: t.tech || '', years: t.years || '' })) : [])
+  const [techStack, setTechStack] = useState<any[]>(Array.isArray(a.tech_stack) ? a.tech_stack.map((t: any) => ({ tech: t.tech || '', years: t.years || '' })) : [])
+  const [saving, setSaving] = useState(false)
+  const set = (k: string, v: any) => setF(prev => ({ ...prev, [k]: v }))
+
+  const save = async () => {
+    setSaving(true)
+    const rolesArr = f.roles.split(',').map((s: string) => s.trim()).filter(Boolean)
+    await onUpdate(a.id, {
+      full_name: f.full_name, email: f.email, phone: f.phone || null,
+      linkedin_url: f.linkedin_url || null, portfolio_url: f.portfolio_url || null,
+      selected_roles: rolesArr, desired_role: rolesArr.join(', '),
+      experience_years: f.experience_years === '' ? null : parseInt(f.experience_years),
+      experience_months: f.experience_months === '' ? null : parseInt(f.experience_months),
+      domain_experience: f.domain_experience || null, expected_salary: f.expected_salary || null,
+      notice_period: f.notice_period || null, work_preference: f.work_preference || null,
+      open_to_outsourcing: f.open_to_outsourcing || null, is_internship: f.is_internship === 'Yes',
+      internal_staff_note: f.internal_staff_note || null, professional_qualifications: f.professional_qualifications || null,
+      key_skills: { languages: languages.filter(l => l.language.trim()), frameworks: f.frameworks, databases: f.databases, other: f.other },
+      technology_highlights: techHi.filter(t => t.tech.trim()),
+      tech_stack: techStack.filter(t => t.tech.trim()),
+      updated_at: new Date().toISOString(),
+    })
+    setSaving(false)
+    onClose()
+  }
+
+  const inp = { ...styles.input, width: '100%', boxSizing: 'border-box' as const }
+  const sel = { ...styles.select, width: '100%', boxSizing: 'border-box' as const }
+  const rowList = (list: any[], setList: any, ka: string, kb: string, pa: string, pb: string) => (
+    <div>
+      {list.map((row, i) => (
+        <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
+          <input placeholder={pa} value={row[ka]} onChange={e => setList(list.map((x: any, j: number) => j === i ? { ...x, [ka]: e.target.value } : x))} style={{ ...styles.input, flex: 2 }} />
+          <input placeholder={pb} value={row[kb]} onChange={e => setList(list.map((x: any, j: number) => j === i ? { ...x, [kb]: e.target.value } : x))} style={{ ...styles.input, flex: 1 }} />
+          <button type="button" onClick={() => setList(list.filter((_: any, j: number) => j !== i))} style={{ padding: '6px 10px', background: '#fff0f0', border: '1px solid #fcc', borderRadius: 8, color: '#c00', cursor: 'pointer' }}>×</button>
+        </div>
+      ))}
+      <button type="button" onClick={() => setList([...list, { [ka]: '', [kb]: '' }])} style={{ padding: '5px 12px', background: '#0f6e56', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13 }}>+ Add</button>
+    </div>
+  )
+
+  return (
+    <div style={{ border: '1px solid #cbd5e1', borderRadius: 10, padding: 16, marginBottom: 20, background: '#fafafa' }}>
+      <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>Edit Applicant Details</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <div><label style={styles.label}>Full Name</label><input value={f.full_name} onChange={e => set('full_name', e.target.value)} style={inp} /></div>
+        <div><label style={styles.label}>Email</label><input value={f.email} onChange={e => set('email', e.target.value)} style={inp} /></div>
+        <div><label style={styles.label}>Phone</label><input value={f.phone} onChange={e => set('phone', e.target.value)} style={inp} /></div>
+        <div><label style={styles.label}>LinkedIn URL</label><input value={f.linkedin_url} onChange={e => set('linkedin_url', e.target.value)} style={inp} /></div>
+        <div><label style={styles.label}>Portfolio URL</label><input value={f.portfolio_url} onChange={e => set('portfolio_url', e.target.value)} style={inp} /></div>
+        <div><label style={styles.label}>Role(s) (comma-separated)</label><input value={f.roles} onChange={e => set('roles', e.target.value)} style={inp} /></div>
+        <div><label style={styles.label}>Experience (Years)</label><input type="number" min="0" value={f.experience_years} onChange={e => set('experience_years', e.target.value)} style={inp} /></div>
+        <div><label style={styles.label}>Experience (Months)</label><input type="number" min="0" max="11" value={f.experience_months} onChange={e => set('experience_months', e.target.value)} style={inp} /></div>
+        <div><label style={styles.label}>Domain Experience</label><input value={f.domain_experience} onChange={e => set('domain_experience', e.target.value)} style={inp} /></div>
+        <div><label style={styles.label}>Desired Compensation</label><input value={f.expected_salary} onChange={e => set('expected_salary', e.target.value)} style={inp} /></div>
+        <div><label style={styles.label}>Notice Period</label><select value={f.notice_period} onChange={e => set('notice_period', e.target.value)} style={sel}><option value="">Select...</option><option value="Immediate">Immediate</option><option value="1 Week">1 Week</option><option value="2 Weeks">2 Weeks</option><option value="1 Month">1 Month</option><option value="2+ Months">2+ Months</option></select></div>
+        <div><label style={styles.label}>Work Preference</label><select value={f.work_preference} onChange={e => set('work_preference', e.target.value)} style={sel}><option value="">Select...</option><option value="On-Site">On-Site</option><option value="Hybrid">Hybrid</option><option value="Remote">Remote</option></select></div>
+        <div><label style={styles.label}>Open to Outsourcing</label><select value={f.open_to_outsourcing} onChange={e => set('open_to_outsourcing', e.target.value)} style={sel}><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
+        <div><label style={styles.label}>Internship?</label><select value={f.is_internship} onChange={e => set('is_internship', e.target.value)} style={sel}><option value="No">No</option><option value="Yes">Yes</option></select></div>
+      </div>
+      <div style={{ marginBottom: 12 }}><label style={styles.label}>Internal Staff Note</label><input value={f.internal_staff_note} onChange={e => set('internal_staff_note', e.target.value)} style={inp} /></div>
+      <div style={{ marginBottom: 12 }}><label style={styles.label}>Professional Qualifications</label><textarea value={f.professional_qualifications} onChange={e => set('professional_qualifications', e.target.value)} style={{ ...inp, minHeight: 100, resize: 'vertical' as const, fontFamily: 'inherit' }} /></div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <div><label style={styles.label}>Frameworks</label><input value={f.frameworks} onChange={e => set('frameworks', e.target.value)} style={inp} /></div>
+        <div><label style={styles.label}>Databases</label><input value={f.databases} onChange={e => set('databases', e.target.value)} style={inp} /></div>
+        <div><label style={styles.label}>Other Skills</label><input value={f.other} onChange={e => set('other', e.target.value)} style={inp} /></div>
+      </div>
+      <div style={{ marginBottom: 12 }}><label style={styles.label}>Languages (language / proficiency)</label>{rowList(languages, setLanguages, 'language', 'proficiency', 'Language', 'Proficiency')}</div>
+      <div style={{ marginBottom: 12 }}><label style={styles.label}>Technology Highlights (tech / years)</label>{rowList(techHi, setTechHi, 'tech', 'years', 'Technology', 'Years')}</div>
+      <div style={{ marginBottom: 16 }}><label style={styles.label}>Tech Stack (tech / years)</label>{rowList(techStack, setTechStack, 'tech', 'years', 'Tech', 'Years')}</div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button onClick={save} disabled={saving} style={{ ...styles.btn, padding: '8px 20px', width: 'auto' }}>{saving ? 'Saving…' : 'Save Changes'}</button>
+        <button onClick={onClose} style={{ ...styles.secondaryBtn, padding: '8px 20px' }}>Cancel</button>
+      </div>
+    </div>
+  )
+}
+
 function ApplicantDetail({ applicant: a, onClose, onUpdate, onDelete, onDownloadInova }: any) {
   const ed = a.extracted_data || {}
   const ks = a.key_skills || {}
   const [notes, setNotes] = useState(a.admin_notes || '')
+  const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const saveNotes = async () => { setSaving(true); await onUpdate(a.id, { admin_notes: notes }); setSaving(false) }
 
@@ -1168,7 +1265,12 @@ function ApplicantDetail({ applicant: a, onClose, onUpdate, onDelete, onDownload
             </span>
           )}
         </div>
-        <button onClick={onClose} style={{ border: 'none', background: 'none', fontSize: 22, cursor: 'pointer', color: '#999' }}>×</button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+          {!editing && (
+            <button onClick={() => setEditing(true)} style={{ border: '1px solid #ddd', background: '#fff', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', padding: '6px 12px', color: '#444' }}>✎ Edit</button>
+          )}
+          <button onClick={onClose} style={{ border: 'none', background: 'none', fontSize: 22, cursor: 'pointer', color: '#999', lineHeight: 1 }}>×</button>
+        </div>
       </div>
 
       <div style={{ marginBottom: 18 }}>
@@ -1202,6 +1304,8 @@ function ApplicantDetail({ applicant: a, onClose, onUpdate, onDelete, onDownload
           Delete Applicant
         </button>
       </div>
+
+      {editing && <ApplicantEditForm a={a} onUpdate={onUpdate} onClose={() => setEditing(false)} />}
 
       <Section title="Contact">
         <Row label="Email" value={a.email} />
@@ -1349,6 +1453,12 @@ function ApplicantDetail({ applicant: a, onClose, onUpdate, onDelete, onDownload
           {savingInterview ? 'Saving…' : 'Save Interview Details'}
         </button>
       </Section>
+
+      {a.updated_at && (
+        <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid #eee', fontSize: 12, color: '#999' }}>
+          Last updated: {new Date(a.updated_at).toLocaleString()}
+        </div>
+      )}
     </div>
   )
 }
