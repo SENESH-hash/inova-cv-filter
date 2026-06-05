@@ -2,7 +2,8 @@
 import { useState, useEffect, useCallback } from 'react'
 
 const STATUS_COLORS: Record<string, string> = {
-  New: '#2563eb', Shortlisted: '#059669', Interviewed: '#d97706', Rejected: '#dc2626'
+  New: '#2563eb', Shortlisted: '#059669', Interviewed: '#d97706', Rejected: '#dc2626',
+  'Not Available': '#6b7280', Outsourced: '#7c3aed'
 }
 
 // ─── Filter row type ───────────────────────────────────────────────────────────
@@ -1227,6 +1228,33 @@ function ApplicantDetail({ applicant: a, onClose, onUpdate, onDelete, onDownload
   const ed = a.extracted_data || {}
   const ks = a.key_skills || {}
   const [notes, setNotes] = useState(a.admin_notes || '')
+
+  // Outsourced details (Task 3)
+  const od = a.outsourced_details || {}
+  const [outsourced, setOutsourced] = useState({ company_name: od.company_name || '', role: od.role || '', time_period: od.time_period || '', notes: od.notes || '' })
+  const [savingOutsourced, setSavingOutsourced] = useState(false)
+  const saveOutsourced = async () => { setSavingOutsourced(true); await onUpdate(a.id, { outsourced_details: outsourced }); setSavingOutsourced(false) }
+
+  // CV Summary (AI) (Task 3)
+  const [cvSummary, setCvSummary] = useState(a.cv_summary || '')
+  const [summaryLoading, setSummaryLoading] = useState(false)
+  const [savingSummary, setSavingSummary] = useState(false)
+  const generateSummary = async () => {
+    setSummaryLoading(true)
+    try {
+      const tok = localStorage.getItem('admin_token')
+      const res = await fetch('/api/admin/cv-summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` },
+        body: JSON.stringify({ applicant: a }),
+      })
+      const data = await res.json()
+      if (res.ok) setCvSummary(data.summary || '')
+      else alert(data.error || 'Could not generate summary')
+    } catch { alert('Could not generate summary') }
+    setSummaryLoading(false)
+  }
+  const saveSummary = async () => { setSavingSummary(true); await onUpdate(a.id, { cv_summary: cvSummary }); setSavingSummary(false) }
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const saveNotes = async () => { setSaving(true); await onUpdate(a.id, { admin_notes: notes }); setSaving(false) }
@@ -1275,8 +1303,8 @@ function ApplicantDetail({ applicant: a, onClose, onUpdate, onDelete, onDownload
 
       <div style={{ marginBottom: 18 }}>
         <label style={styles.label}>Application Status</label>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {['New','Shortlisted','Interviewed','Rejected'].map(s => (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
+          {['New','Rejected','Not Available','Outsourced'].map(s => (
             <button key={s} onClick={() => onUpdate(a.id, { status: s })}
             style={{ padding: '6px 14px', borderRadius: 20, border: `1.5px solid ${STATUS_COLORS[s]}`, background: a.status === s ? STATUS_COLORS[s] : 'transparent', color: a.status === s ? '#fff' : STATUS_COLORS[s], fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
               {s}
@@ -1286,8 +1314,33 @@ function ApplicantDetail({ applicant: a, onClose, onUpdate, onDelete, onDownload
           style={{ padding: '6px 14px', borderRadius: 20, border: '1.5px solid #0f6e56', background: 'transparent', color: '#0f6e56', fontSize: 13, fontWeight: 500, cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }}>
             Send Email
           </a>
+          <button onClick={generateSummary} disabled={summaryLoading}
+            style={{ padding: '6px 14px', borderRadius: 20, border: '1.5px solid #1a3a8f', background: 'transparent', color: '#1a3a8f', fontSize: 13, fontWeight: 500, cursor: summaryLoading ? 'not-allowed' : 'pointer' }}>
+            {summaryLoading ? 'Generating…' : 'Generate CV Summary'}
+          </button>
         </div>
       </div>
+
+      {a.status === 'Outsourced' && (
+        <div style={{ marginBottom: 18, background: '#f5f3ff', border: '1px solid #ddd6fe', borderRadius: 10, padding: 14 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#5b21b6', marginBottom: 10 }}>Outsourced Details</div>
+          <div style={{ display: 'grid', gap: 10 }}>
+            <div><label style={styles.label}>Company Name</label><input value={outsourced.company_name} onChange={e => setOutsourced(p => ({ ...p, company_name: e.target.value }))} style={{ ...styles.input, width: '100%', boxSizing: 'border-box' as const }} /></div>
+            <div><label style={styles.label}>Role</label><input value={outsourced.role} onChange={e => setOutsourced(p => ({ ...p, role: e.target.value }))} style={{ ...styles.input, width: '100%', boxSizing: 'border-box' as const }} /></div>
+            <div><label style={styles.label}>Time Period</label><input value={outsourced.time_period} onChange={e => setOutsourced(p => ({ ...p, time_period: e.target.value }))} style={{ ...styles.input, width: '100%', boxSizing: 'border-box' as const }} /></div>
+            <div><label style={styles.label}>Notes</label><textarea value={outsourced.notes} onChange={e => setOutsourced(p => ({ ...p, notes: e.target.value }))} style={{ ...styles.input, width: '100%', minHeight: 60, resize: 'vertical' as const, boxSizing: 'border-box' as const }} /></div>
+          </div>
+          <button onClick={saveOutsourced} style={{ ...styles.btn, marginTop: 10, padding: '8px 20px', width: 'auto' }}>{savingOutsourced ? 'Saving…' : 'Save Outsourced Details'}</button>
+        </div>
+      )}
+
+      {cvSummary && (
+        <div style={{ marginBottom: 18, background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, padding: 14 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#1e40af', marginBottom: 8 }}>CV Summary</div>
+          <p style={{ fontSize: 14, color: '#333', lineHeight: 1.6, margin: '0 0 10px', whiteSpace: 'pre-wrap' }}>{cvSummary}</p>
+          <button onClick={saveSummary} style={{ ...styles.btn, padding: '8px 20px', width: 'auto' }}>{savingSummary ? 'Saving…' : 'Save Summary'}</button>
+        </div>
+      )}
 
       {/* Download buttons */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' as const }}>
