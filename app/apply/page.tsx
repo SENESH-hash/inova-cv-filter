@@ -56,6 +56,7 @@ export default function ApplyPage() {
   const [noticePeriod, setNoticePeriod] = useState('')
   const [workPreference, setWorkPreference] = useState('')
   const [referralSource, setReferralSource] = useState('')
+  const [gender, setGender] = useState('')
   const [referralName, setReferralName] = useState('')
   const [internalStaffNote, setInternalStaffNote] = useState('')
   const [isInternship, setIsInternship] = useState<'Yes' | 'No' | ''>('')
@@ -129,6 +130,7 @@ export default function ApplyPage() {
     fd.append('notice_period', noticePeriod)
     fd.append('work_preference', workPreference)
     fd.append('referral_source', referralSource)
+    fd.append('gender', gender)
     fd.append('referral_name', referralName)
     fd.append('internal_staff_note', internalStaffNote)
     fd.append('is_internship', isInternship)
@@ -163,6 +165,19 @@ export default function ApplyPage() {
           <div style={styles.grid2}>
             <Field label="Full Name *" name="full_name" value={form.full_name} onChange={handle} required />
             <Field label="Email Address *" name="email" type="email" value={form.email} onChange={handle} required />
+          </div>
+
+          {/* Gender */}
+          <div style={{ marginBottom: 20 }}>
+            <label style={styles.label}>Gender</label>
+            <div style={{ display: 'flex', gap: 16, marginTop: 6, flexWrap: 'wrap' as const }}>
+              {['Male', 'Female', 'Prefer not to say'].map(opt => (
+                <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
+                  <input type="radio" name="gender" value={opt} checked={gender === opt} onChange={() => setGender(opt)} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                  {opt}
+                </label>
+              ))}
+            </div>
           </div>
           <div style={styles.grid2}>
             <Field label="Phone Number" name="phone" value={form.phone} onChange={handle} />

@@ -1363,6 +1363,7 @@ function ApplicantDetail({ applicant: a, onClose, onUpdate, onDelete, onDownload
       <Section title="Contact">
         <Row label="Email" value={a.email} />
         <Row label="Phone" value={a.phone} />
+        <Row label="Gender" value={a.gender} />
         {a.linkedin_url && <Row label="LinkedIn" value={<a href={a.linkedin_url} target="_blank" rel="noreferrer">{a.linkedin_url}</a>} />}
         {a.portfolio_url && <Row label="Portfolio" value={<a href={a.portfolio_url} target="_blank" rel="noreferrer">{a.portfolio_url}</a>} />}
       </Section>

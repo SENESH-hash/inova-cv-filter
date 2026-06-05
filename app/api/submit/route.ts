@@ -67,6 +67,7 @@ export async function POST(req: NextRequest) {
     const domainExperience = formData.get('domain_experience') as string
     const professionalQualifications = formData.get('professional_qualifications') as string
     const referralSource = formData.get('referral_source') as string
+    const gender = formData.get('gender') as string
     const referralName = formData.get('referral_name') as string
     const internalStaffNote = formData.get('internal_staff_note') as string
     const isInternship = (formData.get('is_internship') as string) === 'Yes'
@@ -112,6 +113,7 @@ export async function POST(req: NextRequest) {
       cv_file_url: publicUrl,
       cv_file_type: fileType,
       referral_source: referralSource || null,
+      gender: gender || null,
       referral_name: referralName || null,
       internal_staff_note: internalStaffNote || null,
       is_internship: isInternship,

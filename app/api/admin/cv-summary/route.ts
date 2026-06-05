@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
     || 'N/A'
 
   const details = `Name: ${a.full_name || 'N/A'}
+Gender: ${a.gender || 'Not specified'}
 Role(s): ${roles}
 Tech Stack: ${techStack}
 Expected Salary: ${a.expected_salary || 'N/A'}
@@ -31,6 +32,8 @@ Open to Outsourcing: ${a.open_to_outsourcing || 'N/A'}
 Heard About Us Via: ${a.referral_source || 'N/A'}`
 
   const prompt = `You are an HR recruiter. Write a concise, professional summary paragraph (3-4 sentences, no bullet points, no headings) about this job applicant based ONLY on the details below. Do not invent information. Write in the third person.
+
+Use pronouns that match the applicant's Gender: "Male" → he/him, "Female" → she/her, "Prefer not to say" or "Not specified" → they/them (or rephrase to avoid pronouns). Never assume a gender that isn't given.
 
 ${details}
 
