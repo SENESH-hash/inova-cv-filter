@@ -75,6 +75,7 @@ export async function POST(req: NextRequest) {
     const expectedSalary = formData.get('expected_salary') as string
     const noticePeriod = formData.get('notice_period') as string
     const workPreference = formData.get('work_preference') as string
+    const workArrangementComments = formData.get('work_arrangement_comments') as string
     const cvFile = formData.get('cv_file') as File
 
     if (!fullName || !email || !cvFile) {
@@ -128,6 +129,7 @@ export async function POST(req: NextRequest) {
       expected_salary: expectedSalary || null,
       notice_period: noticePeriod || null,
       work_preference: workPreference || null,
+      work_arrangement_comments: workArrangementComments || null,
       extracted_data: extractedData,
     })
 

@@ -1202,7 +1202,7 @@ function ApplicantEditForm({ a, onUpdate, onClose }: any) {
         <div><label style={styles.label}>Domain Experience</label><input value={f.domain_experience} onChange={e => set('domain_experience', e.target.value)} style={inp} /></div>
         <div><label style={styles.label}>Desired Compensation</label><input value={f.expected_salary} onChange={e => set('expected_salary', e.target.value)} style={inp} /></div>
         <div><label style={styles.label}>Notice Period</label><select value={f.notice_period} onChange={e => set('notice_period', e.target.value)} style={sel}><option value="">Select...</option><option value="Immediate">Immediate</option><option value="1 Week">1 Week</option><option value="2 Weeks">2 Weeks</option><option value="1 Month">1 Month</option><option value="2+ Months">2+ Months</option></select></div>
-        <div><label style={styles.label}>Work Preference</label><select value={f.work_preference} onChange={e => set('work_preference', e.target.value)} style={sel}><option value="">Select...</option><option value="On-Site">On-Site</option><option value="Hybrid">Hybrid</option><option value="Remote">Remote</option></select></div>
+        <div><label style={styles.label}>Work Arrangement (comma-separated)</label><input value={f.work_preference} onChange={e => set('work_preference', e.target.value)} style={inp} /></div>
         <div><label style={styles.label}>Open to Outsourcing</label><select value={f.open_to_outsourcing} onChange={e => set('open_to_outsourcing', e.target.value)} style={sel}><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
         <div><label style={styles.label}>Internship?</label><select value={f.is_internship} onChange={e => set('is_internship', e.target.value)} style={sel}><option value="No">No</option><option value="Yes">Yes</option></select></div>
       </div>
@@ -1451,7 +1451,8 @@ function ApplicantDetail({ applicant: a, onClose, onUpdate, onDelete, onDownload
       {(a.open_to_outsourcing || a.expected_salary || a.notice_period || a.work_preference || a.is_internship) && (
         <Section title="Availability & Compensation">
           {a.is_internship && <Row label="Applying As" value="Internship" />}
-          {a.work_preference && <Row label="Work Preference" value={a.work_preference} />}
+          {a.work_preference && <Row label="Work Arrangement" value={a.work_preference} />}
+          {a.work_arrangement_comments && <Row label="Arrangement Notes" value={a.work_arrangement_comments} />}
           {a.open_to_outsourcing && <Row label="Open to Outsourcing" value={a.open_to_outsourcing} />}
           {a.expected_salary && <Row label="Desired Compensation" value={a.expected_salary} />}
           {a.notice_period && <Row label="Notice Period" value={a.notice_period} />}

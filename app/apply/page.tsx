@@ -54,7 +54,9 @@ export default function ApplyPage() {
   const [openToOutsourcing, setOpenToOutsourcing] = useState('')
   const [expectedSalary, setExpectedSalary] = useState('')
   const [noticePeriod, setNoticePeriod] = useState('')
-  const [workPreference, setWorkPreference] = useState('')
+  const [workAvailability, setWorkAvailability] = useState<string[]>([])
+  const [workComments, setWorkComments] = useState('')
+  const toggleAvailability = (v: string) => setWorkAvailability(prev => prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v])
   const [referralSource, setReferralSource] = useState('')
   const [gender, setGender] = useState('')
   const [referralName, setReferralName] = useState('')
@@ -128,7 +130,8 @@ export default function ApplyPage() {
     fd.append('open_to_outsourcing', openToOutsourcing)
     fd.append('expected_salary', expectedSalary)
     fd.append('notice_period', noticePeriod)
-    fd.append('work_preference', workPreference)
+    fd.append('work_preference', workAvailability.join(', '))
+    fd.append('work_arrangement_comments', workComments)
     fd.append('referral_source', referralSource)
     fd.append('gender', gender)
     fd.append('referral_name', referralName)
@@ -368,24 +371,25 @@ export default function ApplyPage() {
             </select>
           </div>
 
-          {/* Work Preference */}
+          {/* Work Arrangement Availability */}
           <div style={{ marginBottom: 20 }}>
-            <label style={styles.label}>Work Preference</label>
-            <p style={{ fontSize: 12, color: '#888', margin: '0 0 8px' }}>Which work arrangement do you prefer?</p>
-            <div style={{ display: 'flex', gap: 16, marginTop: 6 }}>
-              {['On-Site', 'Hybrid', 'Remote'].map(opt => (
-                <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
-                  <input
-                    type="radio"
-                    name="work_preference"
-                    value={opt}
-                    checked={workPreference === opt}
-                    onChange={() => setWorkPreference(opt)}
-                    style={{ width: 16, height: 16, cursor: 'pointer' }}
-                  />
-                  {opt}
+            <label style={styles.label}>Work Arrangement Availability</label>
+            <p style={{ fontSize: 12, color: '#888', margin: '0 0 10px' }}>This role may require on-site, hybrid, or remote work depending on project requirements. Please indicate your availability:</p>
+            <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+              {[
+                { value: 'On-site', label: 'Available for On-site work' },
+                { value: 'Hybrid', label: 'Available for Hybrid work' },
+                { value: 'Remote/WFH', label: 'Available for Remote/WFH work' },
+              ].map(opt => (
+                <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={workAvailability.includes(opt.value)} onChange={() => toggleAvailability(opt.value)} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                  {opt.label}
                 </label>
               ))}
+            </div>
+            <div style={{ marginTop: 12 }}>
+              <label style={styles.label}>Additional Comments (Optional)</label>
+              <input value={workComments} onChange={e => setWorkComments(e.target.value)} style={{ ...styles.input, width: '100%', boxSizing: 'border-box' as const }} />
             </div>
           </div>
 
