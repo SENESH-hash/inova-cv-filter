@@ -481,7 +481,7 @@ ${techData.length>0?`<tr><th rowspan="${Math.max(Math.ceil(techData.length/2),1)
 
   // ─── Main dashboard ───────────────────────────────────────────────────────────
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(120deg, #f5a7c5 0%, #c08ee0 35%, #8f8ee8 60%, #6db8ef 100%)' }}>
+    <div style={{ minHeight: '100vh', background: '#3a3d42' }}>
 
       {/* Header */}
       <div style={{ background: '#C41E3A', borderBottom: '1px solid #8B0000', padding: '14px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -632,8 +632,8 @@ ${techData.length>0?`<tr><th rowspan="${Math.max(Math.ceil(techData.length/2),1)
           {/* Header row */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
             <div>
-              <h2 style={{ margin: 0, fontSize: 18 }}>Job Openings</h2>
-              <p style={{ margin: '4px 0 0', fontSize: 13, color: '#888' }}>Manage open positions and screen CVs with AI</p>
+              <h2 style={{ margin: 0, fontSize: 18, color: '#fff' }}>Job Openings</h2>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>Manage open positions and screen CVs with AI</p>
             </div>
             <button onClick={() => { setShowJobForm(true); setSelectedJob(null) }} style={styles.btn}>
               + New Job Opening
