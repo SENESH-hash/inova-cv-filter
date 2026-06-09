@@ -1064,7 +1064,7 @@ function ApplicantCard({ applicant: a, rank, showScore, onSelect, onUpdate, onDe
     : ''
 
   return (
-    <div style={{ ...styles.glassCard, position: 'relative' as const }} onClick={() => onSelect(a)}>
+    <div style={{ ...styles.glassCard, position: 'relative' as const, height: 430, display: 'flex', flexDirection: 'column' as const }} onClick={() => onSelect(a)}>
       {/* Rank or Match Score badge */}
       <div style={{ position: 'absolute' as const, top: 10, right: 10 }}>
         {showScore && a.match_score != null ? (
@@ -1082,6 +1082,7 @@ function ApplicantCard({ applicant: a, rank, showScore, onSelect, onUpdate, onDe
         )}
       </div>
 
+      <div style={{ flex: 1, overflowY: 'auto' as const, minHeight: 0 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10, paddingRight: 80 }}>
         <div>
           <div style={{ fontWeight: 600, fontSize: 15 }}>{a.full_name}</div>
@@ -1123,6 +1124,7 @@ function ApplicantCard({ applicant: a, rank, showScore, onSelect, onUpdate, onDe
         {a.updated_at && <span> · Updated {new Date(a.updated_at).toLocaleDateString()}</span>}
       </div>
       {a.referral_source && <div style={{ marginTop: 6, fontSize: 12, color: '#888', background: '#fffbe6', borderRadius: 5, padding: '4px 8px' }}>👥 Via {a.referral_source}{a.referral_name ? ` (${a.referral_name})` : ''}</div>}
+      </div>
       <div style={{ marginTop: 10, display: 'flex', gap: 6 }} onClick={e => e.stopPropagation()}>
         <button onClick={() => onDelete(a.id)} style={{ flex: 1, padding: '5px', background: '#fff0f0', border: '1px solid #fcc', borderRadius: 6, fontSize: 12, color: '#c00', cursor: 'pointer' }}>🗑 Delete</button>
       </div>
