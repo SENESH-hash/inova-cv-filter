@@ -481,7 +481,7 @@ ${techData.length>0?`<tr><th rowspan="${Math.max(Math.ceil(techData.length/2),1)
 
   // ─── Main dashboard ───────────────────────────────────────────────────────────
   return (
-    <div style={{ minHeight: '100vh', background: '#CBD5E1' }}>
+    <div style={{ minHeight: '100vh', background: 'linear-gradient(120deg, #f5a7c5 0%, #c08ee0 35%, #8f8ee8 60%, #6db8ef 100%)' }}>
 
       {/* Header */}
       <div style={{ background: '#C41E3A', borderBottom: '1px solid #8B0000', padding: '14px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1064,7 +1064,7 @@ function ApplicantCard({ applicant: a, rank, showScore, onSelect, onUpdate, onDe
     : ''
 
   return (
-    <div style={{ ...styles.card, position: 'relative' as const }} onClick={() => onSelect(a)}>
+    <div style={{ ...styles.glassCard, position: 'relative' as const }} onClick={() => onSelect(a)}>
       {/* Rank or Match Score badge */}
       <div style={{ position: 'absolute' as const, top: 10, right: 10 }}>
         {showScore && a.match_score != null ? (
@@ -1085,11 +1085,11 @@ function ApplicantCard({ applicant: a, rank, showScore, onSelect, onUpdate, onDe
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10, paddingRight: 80 }}>
         <div>
           <div style={{ fontWeight: 600, fontSize: 15 }}>{a.full_name}</div>
-          <div style={{ fontSize: 13, color: '#666', marginTop: 2 }}>{a.desired_role}</div>
+          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 2 }}>{a.desired_role}</div>
         </div>
         <span style={{ background: STATUS_COLORS[a.status] + '18', color: STATUS_COLORS[a.status], fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, flexShrink: 0 }}>{a.status}</span>
       </div>
-      <div style={{ fontSize: 13, color: '#555', marginBottom: 8 }}>
+      <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.92)', marginBottom: 8 }}>
         <div>📧 {a.email}</div>
         {ed.location && <div>📍 {ed.location}</div>}
         {(a.experience_years != null || a.experience_months != null) && <div>⏱ {a.experience_years || 0}Y {a.experience_months || 0}M experience</div>}
@@ -1115,10 +1115,10 @@ function ApplicantCard({ applicant: a, rank, showScore, onSelect, onUpdate, onDe
           {ed.skills.slice(0, 4).map((s: string) => (
             <span key={s} style={{ background: '#f0f0f0', borderRadius: 4, padding: '2px 7px', fontSize: 11, color: '#444' }}>{s}</span>
           ))}
-          {ed.skills.length > 4 && <span style={{ fontSize: 11, color: '#999' }}>+{ed.skills.length - 4} more</span>}
+          {ed.skills.length > 4 && <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>+{ed.skills.length - 4} more</span>}
         </div>
       )}
-      <div style={{ marginTop: 10, fontSize: 12, color: '#bbb' }}>
+      <div style={{ marginTop: 10, fontSize: 12, color: 'rgba(255,255,255,0.65)' }}>
         {new Date(a.submitted_at).toLocaleDateString()}
         {a.updated_at && <span> · Updated {new Date(a.updated_at).toLocaleDateString()}</span>}
       </div>
@@ -1539,7 +1539,8 @@ function Row({ label, value }: any) {
 
 const styles: Record<string, React.CSSProperties> = {
   page: { minHeight: '100vh', background: '#1a3a8f', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 },
-  card: { background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', borderRadius: 12, padding: '20px', border: '1px solid rgba(255,255,255,0.5)', borderLeft: '6px solid #0f6e56', boxShadow: '0 4px 20px rgba(0,0,0,0.18)', cursor: 'pointer' },
+  card: { background: '#fff', borderRadius: 12, padding: '20px', border: '1px solid #eee', cursor: 'pointer' },
+  glassCard: { background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(22px) saturate(160%)', WebkitBackdropFilter: 'blur(22px) saturate(160%)', borderRadius: 20, padding: '20px', border: '1px solid rgba(255,255,255,0.4)', boxShadow: '0 8px 32px rgba(31,38,135,0.2), inset 0 1px 0 rgba(255,255,255,0.5)', color: '#fff', textShadow: '0 1px 2px rgba(0,0,0,0.25)', cursor: 'pointer' },
   label: { display: 'block', fontSize: 12, fontWeight: 500, color: '#666', marginBottom: 4 },
   input: { padding: '8px 11px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, outline: 'none' },
   select: { padding: '8px 11px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, background: '#fff', cursor: 'pointer' },
