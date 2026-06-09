@@ -1538,8 +1538,8 @@ function Row({ label, value }: any) {
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  page: { minHeight: '100vh', background: '#CBD5E1', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 },
-  card: { background: '#fff', borderRadius: 12, padding: '20px', border: '1px solid #eee', borderLeft: '6px solid #0f6e56', cursor: 'pointer' },
+  page: { minHeight: '100vh', background: '#1a3a8f', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  card: { background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', borderRadius: 12, padding: '20px', border: '1px solid rgba(255,255,255,0.5)', borderLeft: '6px solid #0f6e56', boxShadow: '0 4px 20px rgba(0,0,0,0.18)', cursor: 'pointer' },
   label: { display: 'block', fontSize: 12, fontWeight: 500, color: '#666', marginBottom: 4 },
   input: { padding: '8px 11px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, outline: 'none' },
   select: { padding: '8px 11px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, background: '#fff', cursor: 'pointer' },
