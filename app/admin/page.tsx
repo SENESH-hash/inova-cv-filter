@@ -1202,7 +1202,7 @@ function ApplicantEditForm({ a, onUpdate, onClose }: any) {
         <div><label style={styles.label}>Domain Experience</label><input value={f.domain_experience} onChange={e => set('domain_experience', e.target.value)} style={inp} /></div>
         <div><label style={styles.label}>Desired Compensation</label><input value={f.expected_salary} onChange={e => set('expected_salary', e.target.value)} style={inp} /></div>
         <div><label style={styles.label}>Notice Period</label><select value={f.notice_period} onChange={e => set('notice_period', e.target.value)} style={sel}><option value="">Select...</option><option value="Immediate">Immediate</option><option value="1 Week">1 Week</option><option value="2 Weeks">2 Weeks</option><option value="1 Month">1 Month</option><option value="2+ Months">2+ Months</option></select></div>
-        <div><label style={styles.label}>Work Arrangement (comma-separated)</label><input value={f.work_preference} onChange={e => set('work_preference', e.target.value)} style={inp} /></div>
+        <div><label style={styles.label}>Work Arrangement (comma-separated)</label><input value={f.work_preference} onChange={e => set('work_preference', e.target.value)} style={inp} /></div> 
         <div><label style={styles.label}>Open to Outsourcing</label><select value={f.open_to_outsourcing} onChange={e => set('open_to_outsourcing', e.target.value)} style={sel}><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
         <div><label style={styles.label}>Internship?</label><select value={f.is_internship} onChange={e => set('is_internship', e.target.value)} style={sel}><option value="No">No</option><option value="Yes">Yes</option></select></div>
       </div>
@@ -1539,7 +1539,7 @@ function Row({ label, value }: any) {
 
 const styles: Record<string, React.CSSProperties> = {
   page: { minHeight: '100vh', background: '#CBD5E1', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 },
-  card: { background: '#fff', borderRadius: 12, padding: '20px', border: '1px solid #eee', cursor: 'pointer' },
+  card: { background: '#fff', borderRadius: 12, padding: '20px', border: '1px solid #eee', borderLeft: '6px solid #0f6e56', cursor: 'pointer' },
   label: { display: 'block', fontSize: 12, fontWeight: 500, color: '#666', marginBottom: 4 },
   input: { padding: '8px 11px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, outline: 'none' },
   select: { padding: '8px 11px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, background: '#fff', cursor: 'pointer' },
