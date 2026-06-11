@@ -481,7 +481,7 @@ ${techData.length>0?`<tr><th rowspan="${Math.max(Math.ceil(techData.length/2),1)
 
   // ─── Main dashboard ───────────────────────────────────────────────────────────
   return (
-    <div style={{ minHeight: '100vh', background: '#3a3d42' }}>
+    <div style={{ minHeight: '100vh', background: '#B9BCBE' }}>
 
       {/* Header */}
       <div style={{ background: '#C41E3A', borderBottom: '1px solid #8B0000', padding: '14px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -607,9 +607,9 @@ ${techData.length>0?`<tr><th rowspan="${Math.max(Math.ceil(techData.length/2),1)
           {/* Cards */}
           <div style={{ padding: '24px 28px' }}>
             {loading ? (
-              <p style={{ color: '#888', textAlign: 'center' as const, marginTop: 60 }}>Loading applicants…</p>
+              <p style={{ color: '#2C3740', textAlign: 'center' as const, marginTop: 60 }}>Loading applicants…</p>
             ) : displayApplicants.length === 0 ? (
-              <p style={{ color: '#888', textAlign: 'center' as const, marginTop: 60 }}>
+              <p style={{ color: '#2C3740', textAlign: 'center' as const, marginTop: 60 }}>
                 {applicants.length === 0 ? 'No applicants yet.' : 'No applicants match the current filters.'}
               </p>
             ) : (
@@ -632,8 +632,8 @@ ${techData.length>0?`<tr><th rowspan="${Math.max(Math.ceil(techData.length/2),1)
           {/* Header row */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
             <div>
-              <h2 style={{ margin: 0, fontSize: 18, color: '#fff' }}>Job Openings</h2>
-              <p style={{ margin: '4px 0 0', fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>Manage open positions and screen CVs with AI</p>
+              <h2 style={{ margin: 0, fontSize: 18, color: '#1A232C' }}>Job Openings</h2>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: '#646C72' }}>Manage open positions and screen CVs with AI</p>
             </div>
             <button onClick={() => { setShowJobForm(true); setSelectedJob(null) }} style={styles.btn}>
               + New Job Opening
@@ -1542,7 +1542,7 @@ function Row({ label, value }: any) {
 const styles: Record<string, React.CSSProperties> = {
   page: { minHeight: '100vh', background: '#1a3a8f', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 },
   card: { background: '#fff', borderRadius: 12, padding: '20px', border: '1px solid #eee', cursor: 'pointer' },
-  glassCard: { background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(22px) saturate(160%)', WebkitBackdropFilter: 'blur(22px) saturate(160%)', borderRadius: 20, padding: '20px', border: '1px solid rgba(255,255,255,0.6)', boxShadow: '0 8px 32px rgba(0,0,0,0.18)', color: '#1f2937', cursor: 'pointer' },
+  glassCard: { background: '#F2F2F3', borderRadius: 20, padding: '20px', border: '1px solid #cdd0d2', boxShadow: '0 4px 14px rgba(26,35,44,0.12)', color: '#1A232C', cursor: 'pointer' },
   label: { display: 'block', fontSize: 12, fontWeight: 500, color: '#666', marginBottom: 4 },
   input: { padding: '8px 11px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, outline: 'none' },
   select: { padding: '8px 11px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, background: '#fff', cursor: 'pointer' },
