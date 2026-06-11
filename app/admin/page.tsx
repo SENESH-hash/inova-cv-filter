@@ -585,12 +585,12 @@ ${techData.length>0?`<tr><th rowspan="${Math.max(Math.ceil(techData.length/2),1)
               </div>
               <div style={{ display: 'flex', gap: 10, marginTop: 10, alignItems: 'center' }}>
                 <button onClick={addFilterRow}
-                  style={{ padding: '7px 16px', background: '#f0f9f6', border: '1.5px dashed #0f6e56', borderRadius: 8, fontSize: 13, color: '#0f6e56', cursor: 'pointer', fontWeight: 500 }}>
+                  style={{ padding: '7px 16px', background: '#fdecef', border: '1.5px dashed #C41E3A', borderRadius: 8, fontSize: 13, color: '#C41E3A', cursor: 'pointer', fontWeight: 500 }}>
                   + Add another filter
                 </button>
                 {filteredApplicants.length > 0 && (
                   <button onClick={runAiRanking} disabled={aiRanking}
-                    style={{ padding: '7px 16px', background: aiRanking ? '#eee' : '#1a3a8f', border: 'none', borderRadius: 8, fontSize: 13, color: aiRanking ? '#999' : '#fff', cursor: aiRanking ? 'not-allowed' : 'pointer', fontWeight: 500 }}>
+                    style={{ padding: '7px 16px', background: aiRanking ? '#eee' : '#C41E3A', border: 'none', borderRadius: 8, fontSize: 13, color: aiRanking ? '#999' : '#fff', cursor: aiRanking ? 'not-allowed' : 'pointer', fontWeight: 500 }}>
                     {aiRanking ? 'AI is ranking...' : 'AI Rank Results'}
                   </button>
                 )}
@@ -747,7 +747,7 @@ function JobCard({ job, isScreening, onSelect, onDelete, onToggleStatus, onScree
         <div style={{ flex: 2, position: 'relative' as const }}>
           {!showTopN ? (
             <button onClick={() => setShowTopN(true)} disabled={isScreening}
-              style={{ width: '100%', padding: '7px', background: isScreening ? '#eee' : '#1a3a8f', border: 'none', borderRadius: 6, fontSize: 12, color: isScreening ? '#999' : '#fff', cursor: isScreening ? 'not-allowed' : 'pointer', fontWeight: 600 }}>
+              style={{ width: '100%', padding: '7px', background: isScreening ? '#eee' : '#C41E3A', border: 'none', borderRadius: 6, fontSize: 12, color: isScreening ? '#999' : '#fff', cursor: isScreening ? 'not-allowed' : 'pointer', fontWeight: 600 }}>
               {isScreening ? 'Screening...' : 'Screen CVs'}
             </button>
           ) : (
@@ -756,7 +756,7 @@ function JobCard({ job, isScreening, onSelect, onDelete, onToggleStatus, onScree
               <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' as const }}>
                 {[1,2,3,4,5,6,7,8,9,10].map(n => (
                   <button key={n} onClick={() => { setShowTopN(false); onScreen(n) }}
-                    style={{ padding: '4px 7px', background: '#1a3a8f', border: 'none', borderRadius: 5, fontSize: 12, color: '#fff', cursor: 'pointer', fontWeight: 600, minWidth: 26 }}>
+                    style={{ padding: '4px 7px', background: '#C41E3A', border: 'none', borderRadius: 5, fontSize: 12, color: '#fff', cursor: 'pointer', fontWeight: 600, minWidth: 26 }}>
                     {n}
                   </button>
                 ))}
@@ -1313,11 +1313,11 @@ function ApplicantDetail({ applicant: a, onClose, onUpdate, onDelete, onDownload
             </button>
           ))}
           <a href={`mailto:${a.email}`}
-          style={{ padding: '6px 14px', borderRadius: 20, border: '1.5px solid #0f6e56', background: 'transparent', color: '#0f6e56', fontSize: 13, fontWeight: 500, cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }}>
+          style={{ padding: '6px 14px', borderRadius: 20, border: '1.5px solid #C41E3A', background: 'transparent', color: '#C41E3A', fontSize: 13, fontWeight: 500, cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }}>
             Send Email
           </a>
           <button onClick={generateSummary} disabled={summaryLoading}
-            style={{ padding: '6px 14px', borderRadius: 20, border: '1.5px solid #1a3a8f', background: 'transparent', color: '#1a3a8f', fontSize: 13, fontWeight: 500, cursor: summaryLoading ? 'not-allowed' : 'pointer' }}>
+            style={{ padding: '6px 14px', borderRadius: 20, border: '1.5px solid #C41E3A', background: 'transparent', color: '#C41E3A', fontSize: 13, fontWeight: 500, cursor: summaryLoading ? 'not-allowed' : 'pointer' }}>
             {summaryLoading ? 'Generating…' : 'Generate CV Summary'}
           </button>
         </div>
@@ -1347,11 +1347,11 @@ function ApplicantDetail({ applicant: a, onClose, onUpdate, onDelete, onDownload
       {/* Download buttons */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' as const }}>
         <a href={a.cv_file_url} target="_blank" rel="noreferrer"
-          style={{ padding: '9px 18px', background: '#0f6e56', color: '#fff', borderRadius: 8, fontSize: 14, fontWeight: 500, textDecoration: 'none' }}>
+          style={{ padding: '9px 18px', background: '#C41E3A', color: '#fff', borderRadius: 8, fontSize: 14, fontWeight: 500, textDecoration: 'none' }}>
           Download CV
         </a>
         <button onClick={() => onDownloadInova(a)}
-          style={{ padding: '9px 18px', background: '#1a3a8f', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>
+          style={{ padding: '9px 18px', background: '#C41E3A', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>
           Download Inova CV
         </button>
         <button onClick={() => onDelete(a.id)}
