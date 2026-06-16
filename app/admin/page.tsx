@@ -101,6 +101,7 @@ export default function AdminPage() {
   const [token, setToken] = useState<string | null>(null)
   const [loginForm, setLoginForm] = useState({ username: '', password: '' })
   const [loginError, setLoginError] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
 
   // Tab state
   const [activeTab, setActiveTab] = useState<'cvs' | 'jobs'>('cvs')
@@ -458,14 +459,32 @@ ${techData.length>0?`<tr><th rowspan="${Math.max(Math.ceil(techData.length/2),1)
   // ─── Login screen ─────────────────────────────────────────────────────────────
   if (!token) return (
     <div style={styles.page}>
-      <div style={{ ...styles.card, maxWidth: 380, cursor: 'default' }}>
+      <div style={{ ...styles.card, maxWidth: 380, cursor: 'default', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
         <h2 style={{ margin: '0 0 6px' }}>Inova IT — Admin</h2>
         <p style={{ color: '#666', margin: '0 0 24px', fontSize: 14 }}>Sign in to access the dashboard</p>
         <form onSubmit={login}>
           <input placeholder="Username" value={loginForm.username} style={styles.input}
             onChange={e => setLoginForm(f => ({ ...f, username: e.target.value }))} />
-          <input placeholder="Password" type="password" value={loginForm.password} style={{ ...styles.input, marginTop: 10 }}
-            onChange={e => setLoginForm(f => ({ ...f, password: e.target.value }))} />
+          <div style={{ position: 'relative', marginTop: 10 }}>
+            <input placeholder="Password" type={showPassword ? 'text' : 'password'} value={loginForm.password}
+              style={{ ...styles.input, width: '100%', boxSizing: 'border-box', paddingRight: 40 }}
+              onChange={e => setLoginForm(f => ({ ...f, password: e.target.value }))} />
+            <button type="button" onClick={() => setShowPassword(s => !s)}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 0, color: '#646C72', display: 'flex', alignItems: 'center' }}>
+              {showPassword ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                  <line x1="1" y1="1" x2="23" y2="23" />
+                </svg>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              )}
+            </button>
+          </div>
           {loginError && <p style={{ color: '#c00', fontSize: 13, marginTop: 8 }}>{loginError}</p>}
           <button style={{ ...styles.btn, marginTop: 16, width: '100%' }}>Sign In</button>
         </form>
@@ -1540,7 +1559,7 @@ function Row({ label, value }: any) {
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  page: { minHeight: '100vh', background: '#1a3a8f', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  page: { minHeight: '100vh', background: '#F2F2F3', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 },
   card: { background: '#fff', borderRadius: 12, padding: '20px', border: '1px solid #eee', cursor: 'pointer' },
   glassCard: { background: '#F2F2F3', borderRadius: 20, padding: '20px', border: '1px solid #cdd0d2', boxShadow: '0 4px 14px rgba(26,35,44,0.12)', color: '#1A232C', cursor: 'pointer' },
   label: { display: 'block', fontSize: 12, fontWeight: 500, color: '#666', marginBottom: 4 },
