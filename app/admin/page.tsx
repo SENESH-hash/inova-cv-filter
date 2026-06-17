@@ -357,6 +357,21 @@ export default function AdminPage() {
     setSummary(screenedResults.applicants.map(mapApplicantToSummary))
   }
 
+  const saveSummaryToJob = async (data: { highlights: Record<string, string>, note: string }) => {
+    if (!screenedResults || !summary) return
+    const jobTitle = jobOpenings.find(j => j.id === screenedResults.jobId)?.title || ''
+    const res = await fetch('/api/admin/cv-summaries', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        job_id: screenedResults.jobId,
+        job_title: jobTitle,
+        summary_data: { applicants: summary, highlights: data.highlights, note: data.note },
+      }),
+    })
+    if (!res.ok) { const { error } = await res.json().catch(() => ({})); alert(error || 'Could not save summary') }
+  }
+
   // ─── Job form helpers ────────────────────────────────────────────────────────
   const saveJob = async () => {
     if (!jobForm.title.trim()) return alert('Job title is required')
@@ -667,7 +682,7 @@ ${techData.length>0?`<tr><th rowspan="${Math.max(Math.ceil(techData.length/2),1)
                     Create Summary
                   </button>
                 ) : (
-                  <CvSummaryTable applicants={summary} jobTitle={screenedJob?.title || ''} onClose={() => setSummary(null)} />
+                  <CvSummaryTable applicants={summary} jobTitle={screenedJob?.title || ''} onClose={() => setSummary(null)} onSave={saveSummaryToJob} />
                 )}
               </div>
             )}
@@ -856,6 +871,21 @@ function JobDetail({ job, isScreening, totalApplicants, onClose, onDelete, onTog
   onToggleStatus: () => void
   onScreen: (topN: number) => void
 }) {
+  const [savedSummaries, setSavedSummaries] = useState<any[]>([])
+  const [loadingSummaries, setLoadingSummaries] = useState(true)
+  useEffect(() => {
+    const tok = localStorage.getItem('admin_token')
+    fetch(`/api/admin/cv-summaries?job_id=${job.id}`, { headers: { Authorization: `Bearer ${tok}` } })
+      .then(r => r.ok ? r.json() : [])
+      .then(d => setSavedSummaries(Array.isArray(d) ? d : []))
+      .catch(() => {})
+      .finally(() => setLoadingSummaries(false))
+  }, [job.id])
+  const deleteSavedSummary = async (id: string) => {
+    const tok = localStorage.getItem('admin_token')
+    await fetch('/api/admin/cv-summaries', { method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` }, body: JSON.stringify({ id }) })
+    setSavedSummaries(s => s.filter(x => x.id !== id))
+  }
   return (
     <div style={{ background: '#fff', borderRadius: 14, width: '100%', maxWidth: 660, maxHeight: '90vh', overflowY: 'auto' as const, padding: 32 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
@@ -919,6 +949,25 @@ function JobDetail({ job, isScreening, totalApplicants, onClose, onDelete, onTog
         <Section title="Notes (Internal)">
           <p style={{ fontSize: 14, color: '#555', lineHeight: 1.6, margin: 0, background: '#fffbe6', borderRadius: 8, padding: '10px 12px', whiteSpace: 'pre-wrap' }}>{job.notes}</p>
         </Section>
+      )}
+
+      {/* Saved CV Summaries */}
+      {!loadingSummaries && savedSummaries.length > 0 && (
+        <div style={{ marginTop: 8, marginBottom: 8 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: '#999', textTransform: 'uppercase' as const, letterSpacing: 1, marginBottom: 10 }}>Saved CV Summaries ({savedSummaries.length})</div>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 16 }}>
+            {savedSummaries.map(s => (
+              <CvSummaryTable key={s.id}
+                applicants={s.summary_data?.applicants || []}
+                jobTitle={''}
+                subtitle={`Saved ${new Date(s.created_at).toLocaleString()}`}
+                initialHighlights={s.summary_data?.highlights || {}}
+                initialNote={s.summary_data?.note || ''}
+                readOnly
+                onDelete={() => deleteSavedSummary(s.id)} />
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Actions */}
@@ -1121,14 +1170,26 @@ function FilterRibbon({ row, index, totalRows, roles, onChange, onRemove }: {
 }
 
 // ─── CV Summary Table ───────────────────────────────────────────────────────────
-function CvSummaryTable({ applicants, jobTitle, onClose }: { applicants: any[], jobTitle: string, onClose: () => void }) {
+function CvSummaryTable({ applicants, jobTitle, subtitle, onClose, onSave, onDelete, initialHighlights, initialNote, readOnly }: {
+  applicants: any[]
+  jobTitle: string
+  subtitle?: string
+  onClose?: () => void
+  onSave?: (data: { highlights: Record<string, string>, note: string }) => Promise<void> | void
+  onDelete?: () => void
+  initialHighlights?: Record<string, string>
+  initialNote?: string
+  readOnly?: boolean
+}) {
   const [editing, setEditing] = useState(false)
-  const [highlights, setHighlights] = useState<Record<string, string>>({})
-  const [note, setNote] = useState('')
+  const [highlights, setHighlights] = useState<Record<string, string>>(initialHighlights || {})
+  const [note, setNote] = useState(initialNote || '')
+  const [saving, setSaving] = useState(false)
+  const [savedMsg, setSavedMsg] = useState('')
 
   const HILITE_CYCLE = ['', '#fff3cd', '#d1fae5', '#fde2e4'] // none, yellow, green, pink
   const cycleHighlight = (rowKey: string, col: number) => {
-    if (!editing) return
+    if (!editing || readOnly) return
     const k = `${rowKey}_${col}`
     const cur = highlights[k] || ''
     const next = HILITE_CYCLE[(HILITE_CYCLE.indexOf(cur) + 1) % HILITE_CYCLE.length]
@@ -1156,18 +1217,33 @@ function CvSummaryTable({ applicants, jobTitle, onClose }: { applicants: any[], 
     URL.revokeObjectURL(url)
   }
 
+  const handleSave = async () => {
+    if (!onSave) return
+    setSaving(true)
+    await onSave({ highlights, note })
+    setSaving(false)
+    setEditing(false)
+    setSavedMsg('Saved to this job opening')
+    setTimeout(() => setSavedMsg(''), 3000)
+  }
+
   const thStyle: React.CSSProperties = { border: '1px solid #d1d5db', padding: '8px 12px', background: '#C41E3A', color: '#fff', fontWeight: 600, fontSize: 13, textAlign: 'center' }
   const tdStyle: React.CSSProperties = { border: '1px solid #d1d5db', padding: '8px 12px', color: '#1A232C', verticalAlign: 'top', fontSize: 13 }
   const btnOutline: React.CSSProperties = { padding: '8px 18px', background: '#fff', border: '1.5px solid #C41E3A', borderRadius: 8, color: '#C41E3A', fontSize: 13, fontWeight: 600, cursor: 'pointer' }
+  const btnSolid: React.CSSProperties = { padding: '8px 18px', background: '#C41E3A', border: 'none', borderRadius: 8, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }
+  const btnDanger: React.CSSProperties = { padding: '8px 18px', background: '#fff0f0', border: '1px solid #fcc', borderRadius: 8, color: '#c00', fontSize: 13, fontWeight: 600, cursor: 'pointer' }
 
   return (
     <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 20, boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <div style={{ fontWeight: 700, fontSize: 15, color: '#1A232C' }}>CV Summary{jobTitle ? ` — ${jobTitle}` : ''}</div>
-        <button onClick={onClose} style={{ border: 'none', background: 'none', fontSize: 20, cursor: 'pointer', color: '#999', lineHeight: 1 }}>×</button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 15, color: '#1A232C' }}>CV Summary{jobTitle ? ` — ${jobTitle}` : ''}</div>
+          {subtitle && <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>{subtitle}</div>}
+        </div>
+        {onClose && <button onClick={onClose} style={{ border: 'none', background: 'none', fontSize: 20, cursor: 'pointer', color: '#999', lineHeight: 1 }}>×</button>}
       </div>
 
-      {editing && <div style={{ fontSize: 12, color: '#646C72', marginBottom: 8 }}>Click any applicant cell to cycle its highlight colour (none → yellow → green → pink).</div>}
+      {editing && !readOnly && <div style={{ fontSize: 12, color: '#646C72', marginBottom: 8 }}>Click any applicant cell to cycle its highlight colour (none → yellow → green → pink).</div>}
 
       <div style={{ overflowX: 'auto' }}>
         <table style={{ borderCollapse: 'collapse', width: '100%' }}>
@@ -1185,7 +1261,7 @@ function CvSummaryTable({ applicants, jobTitle, onClose }: { applicants: any[], 
                   const k = `${row.key}_${i}`
                   return (
                     <td key={i} onClick={() => cycleHighlight(row.key, i)}
-                      style={{ ...tdStyle, background: highlights[k] || '#fff', cursor: editing ? 'pointer' : 'default' }}>
+                      style={{ ...tdStyle, background: highlights[k] || '#fff', cursor: editing && !readOnly ? 'pointer' : 'default' }}>
                       {a[row.key] || '—'}
                     </td>
                   )
@@ -1196,7 +1272,7 @@ function CvSummaryTable({ applicants, jobTitle, onClose }: { applicants: any[], 
         </table>
       </div>
 
-      {editing ? (
+      {editing && !readOnly ? (
         <div style={{ marginTop: 12 }}>
           <label style={{ display: 'block', fontSize: 12, color: '#646C72', marginBottom: 4 }}>Note (optional)</label>
           <input value={note} onChange={e => setNote(e.target.value)} placeholder="Add a short note…"
@@ -1206,9 +1282,12 @@ function CvSummaryTable({ applicants, jobTitle, onClose }: { applicants: any[], 
         <div style={{ marginTop: 12, fontSize: 13, color: '#555', background: '#fffbe6', borderRadius: 8, padding: '8px 12px' }}>Note: {note}</div>
       ) : null}
 
-      <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-        <button onClick={() => setEditing(e => !e)} style={btnOutline}>{editing ? 'Done editing' : 'Edit'}</button>
+      <div style={{ display: 'flex', gap: 8, marginTop: 16, alignItems: 'center', flexWrap: 'wrap' as const }}>
+        {!readOnly && <button onClick={() => setEditing(e => !e)} style={btnOutline}>{editing ? 'Done editing' : 'Edit'}</button>}
         <button onClick={exportExcel} style={btnOutline}>Export</button>
+        {onSave && <button onClick={handleSave} disabled={saving} style={btnSolid}>{saving ? 'Saving…' : 'Save'}</button>}
+        {onDelete && <button onClick={onDelete} style={btnDanger}>Delete</button>}
+        {savedMsg && <span style={{ fontSize: 13, color: '#0f6e56', fontWeight: 600 }}>{savedMsg}</span>}
       </div>
     </div>
   )
