@@ -27,13 +27,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (jobError || !job) return NextResponse.json({ error: 'Job not found' }, { status: 404 })
 
   // 2. Fetch all applicants
-  const { data: applicants, error: appError } = await supabaseAdmin
+  const { data: allApplicants, error: appError } = await supabaseAdmin
     .from('applicants')
     .select('*')
     .order('submitted_at', { ascending: false })
 
   if (appError) return NextResponse.json({ error: appError.message }, { status: 500 })
-  if (!applicants || applicants.length === 0) return NextResponse.json({ rankedApplicants: [] })
+
+  // Exclude Rejected and Outsourced applicants — they shouldn't appear in screening results
+  const applicants = (allApplicants || []).filter(
+    (a: any) => a.status !== 'Rejected' && a.status !== 'Outsourced'
+  )
+
+  if (applicants.length === 0) return NextResponse.json({ rankedApplicants: [] })
 
   // Check we have enough CVs
   if (topN > 0 && applicants.length < topN) {
