@@ -97,6 +97,33 @@ function TagInput({ values, onChange, placeholder }: { values: string[], onChang
   )
 }
 
+// ─── CV Summary table config ────────────────────────────────────────────────────
+const SUMMARY_ROWS = [
+  { key: 'name', label: 'Name' },
+  { key: 'email', label: 'Email' },
+  { key: 'notice_period', label: 'Notice Period' },
+  { key: 'desired_compensation', label: 'Desired Compensation' },
+  { key: 'technology_highlights', label: 'Technology Highlights' },
+  { key: 'languages', label: 'Languages' },
+]
+function mapApplicantToSummary(a: any) {
+  const ks = a.key_skills || {}
+  const tech = Array.isArray(a.technology_highlights)
+    ? a.technology_highlights.filter((t: any) => t.tech).map((t: any) => `${t.tech}${t.years ? ` (${t.years}Y)` : ''}`).join(', ')
+    : ''
+  const langs = Array.isArray(ks.languages)
+    ? ks.languages.map((l: any) => `${l.language}${l.proficiency ? ` (${l.proficiency})` : ''}`).join(', ')
+    : (ks.languages || '')
+  return {
+    name: a.full_name || '',
+    email: a.email || '',
+    notice_period: a.notice_period || '',
+    desired_compensation: a.expected_salary || '',
+    technology_highlights: tech,
+    languages: langs,
+  }
+}
+
 export default function AdminPage() {
   const [token, setToken] = useState<string | null>(null)
   const [loginForm, setLoginForm] = useState({ username: '', password: '' })
@@ -129,6 +156,7 @@ export default function AdminPage() {
   const [selectedJob, setSelectedJob] = useState<JobOpening | null>(null)
   const [screeningJob, setScreeningJob] = useState<string | null>(null) // job id being screened
   const [screenedResults, setScreenedResults] = useState<{ jobId: string; applicants: any[] } | null>(null)
+  const [summary, setSummary] = useState<any[] | null>(null) // built CV comparison summary
 
   useEffect(() => {
     const t = localStorage.getItem('admin_token')
@@ -303,6 +331,7 @@ export default function AdminPage() {
   const screenCVsForJob = async (jobId: string, topN: number) => {
     setScreeningJob(jobId)
     setScreenedResults(null)
+    setSummary(null)
     try {
       const res = await fetch(`/api/admin/job-openings/${jobId}/screen`, {
         method: 'POST',
@@ -321,6 +350,11 @@ export default function AdminPage() {
       setSelectedJob(null)
     } catch (err) { console.error('Screening error:', err) }
     setScreeningJob(null)
+  }
+
+  const createSummary = () => {
+    if (!screenedResults) return
+    setSummary(screenedResults.applicants.map(mapApplicantToSummary))
   }
 
   // ─── Job form helpers ────────────────────────────────────────────────────────
@@ -565,7 +599,7 @@ ${techData.length>0?`<tr><th rowspan="${Math.max(Math.ceil(techData.length/2),1)
               <div style={{ color: '#fff', fontSize: 14 }}>
                 <strong>AI Screening Results</strong> for <em>{screenedJob.title}</em> — {screenedResults.applicants.length} CVs ranked by match score
               </div>
-              <button onClick={() => setScreenedResults(null)}
+              <button onClick={() => { setScreenedResults(null); setSummary(null) }}
                 style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.4)', borderRadius: 6, color: '#fff', padding: '5px 12px', cursor: 'pointer', fontSize: 13 }}>
                 Clear Results
               </button>
@@ -625,6 +659,18 @@ ${techData.length>0?`<tr><th rowspan="${Math.max(Math.ceil(techData.length/2),1)
 
           {/* Cards */}
           <div style={{ padding: '24px 28px' }}>
+            {screenedResults && (
+              <div style={{ marginBottom: 18 }}>
+                {!summary ? (
+                  <button onClick={createSummary}
+                    style={{ padding: '9px 18px', background: '#C41E3A', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+                    Create Summary
+                  </button>
+                ) : (
+                  <CvSummaryTable applicants={summary} jobTitle={screenedJob?.title || ''} onClose={() => setSummary(null)} />
+                )}
+              </div>
+            )}
             {loading ? (
               <p style={{ color: '#2C3740', textAlign: 'center' as const, marginTop: 60 }}>Loading applicants…</p>
             ) : displayApplicants.length === 0 ? (
@@ -1074,7 +1120,99 @@ function FilterRibbon({ row, index, totalRows, roles, onChange, onRemove }: {
   )
 }
 
-// ─── Applicant Card ────────────────────────────────────────────────────────────
+// ─── CV Summary Table ───────────────────────────────────────────────────────────
+function CvSummaryTable({ applicants, jobTitle, onClose }: { applicants: any[], jobTitle: string, onClose: () => void }) {
+  const [editing, setEditing] = useState(false)
+  const [highlights, setHighlights] = useState<Record<string, string>>({})
+  const [note, setNote] = useState('')
+
+  const HILITE_CYCLE = ['', '#fff3cd', '#d1fae5', '#fde2e4'] // none, yellow, green, pink
+  const cycleHighlight = (rowKey: string, col: number) => {
+    if (!editing) return
+    const k = `${rowKey}_${col}`
+    const cur = highlights[k] || ''
+    const next = HILITE_CYCLE[(HILITE_CYCLE.indexOf(cur) + 1) % HILITE_CYCLE.length]
+    setHighlights(h => { const n = { ...h }; if (next) n[k] = next; else delete n[k]; return n })
+  }
+
+  const exportExcel = () => {
+    const esc = (s: any) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    const head = applicants.map((_, i) => `<th style="border:1px solid #999;padding:8px 14px;background:#C41E3A;color:#fff;font-weight:bold;">Applicant ${i + 1}</th>`).join('')
+    const rows = SUMMARY_ROWS.map(row => {
+      const cells = applicants.map((a, i) => {
+        const bg = highlights[`${row.key}_${i}`] || '#ffffff'
+        return `<td style="border:1px solid #999;padding:8px 14px;background:${bg};">${esc(a[row.key] || '')}</td>`
+      }).join('')
+      return `<tr><td style="border:1px solid #999;padding:8px 14px;background:#f0f0f0;font-weight:bold;">${row.label}</td>${cells}</tr>`
+    }).join('')
+    const noteRow = note ? `<tr><td colspan="${applicants.length + 1}" style="border:1px solid #999;padding:8px 14px;background:#fffbe6;">Note: ${esc(note)}</td></tr>` : ''
+    const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"/></head><body><table style="border-collapse:collapse;font-family:Calibri,Arial,sans-serif;font-size:12pt;"><tr><th style="border:1px solid #999;padding:8px 14px;background:#C41E3A;color:#fff;font-weight:bold;text-align:left;">Detail</th>${head}</tr>${rows}${noteRow}</table></body></html>`
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `CV_Summary${jobTitle ? '_' + jobTitle.replace(/[^a-z0-9]+/gi, '_') : ''}.xls`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const thStyle: React.CSSProperties = { border: '1px solid #d1d5db', padding: '8px 12px', background: '#C41E3A', color: '#fff', fontWeight: 600, fontSize: 13, textAlign: 'center' }
+  const tdStyle: React.CSSProperties = { border: '1px solid #d1d5db', padding: '8px 12px', color: '#1A232C', verticalAlign: 'top', fontSize: 13 }
+  const btnOutline: React.CSSProperties = { padding: '8px 18px', background: '#fff', border: '1.5px solid #C41E3A', borderRadius: 8, color: '#C41E3A', fontSize: 13, fontWeight: 600, cursor: 'pointer' }
+
+  return (
+    <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 20, boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <div style={{ fontWeight: 700, fontSize: 15, color: '#1A232C' }}>CV Summary{jobTitle ? ` — ${jobTitle}` : ''}</div>
+        <button onClick={onClose} style={{ border: 'none', background: 'none', fontSize: 20, cursor: 'pointer', color: '#999', lineHeight: 1 }}>×</button>
+      </div>
+
+      {editing && <div style={{ fontSize: 12, color: '#646C72', marginBottom: 8 }}>Click any applicant cell to cycle its highlight colour (none → yellow → green → pink).</div>}
+
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+          <thead>
+            <tr>
+              <th style={{ ...thStyle, textAlign: 'left' }}>Detail</th>
+              {applicants.map((_, i) => <th key={i} style={thStyle}>Applicant {i + 1}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {SUMMARY_ROWS.map(row => (
+              <tr key={row.key}>
+                <td style={{ ...tdStyle, fontWeight: 600, background: '#f8f9fa' }}>{row.label}</td>
+                {applicants.map((a, i) => {
+                  const k = `${row.key}_${i}`
+                  return (
+                    <td key={i} onClick={() => cycleHighlight(row.key, i)}
+                      style={{ ...tdStyle, background: highlights[k] || '#fff', cursor: editing ? 'pointer' : 'default' }}>
+                      {a[row.key] || '—'}
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {editing ? (
+        <div style={{ marginTop: 12 }}>
+          <label style={{ display: 'block', fontSize: 12, color: '#646C72', marginBottom: 4 }}>Note (optional)</label>
+          <input value={note} onChange={e => setNote(e.target.value)} placeholder="Add a short note…"
+            style={{ width: '100%', boxSizing: 'border-box', padding: '8px 11px', border: '1px solid #ddd', borderRadius: 8, fontSize: 13, outline: 'none' }} />
+        </div>
+      ) : note ? (
+        <div style={{ marginTop: 12, fontSize: 13, color: '#555', background: '#fffbe6', borderRadius: 8, padding: '8px 12px' }}>Note: {note}</div>
+      ) : null}
+
+      <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+        <button onClick={() => setEditing(e => !e)} style={btnOutline}>{editing ? 'Done editing' : 'Edit'}</button>
+        <button onClick={exportExcel} style={btnOutline}>Export</button>
+      </div>
+    </div>
+  )
+}
 function ApplicantCard({ applicant: a, rank, showScore, onSelect, onUpdate, onDelete }: any) {
   const ed = a.extracted_data || {}
   const ks = a.key_skills || {}
