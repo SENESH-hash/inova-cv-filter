@@ -101,6 +101,7 @@ function TagInput({ values, onChange, placeholder }: { values: string[], onChang
 const SUMMARY_ROWS = [
   { key: 'name', label: 'Name' },
   { key: 'email', label: 'Email' },
+  { key: 'phone', label: 'Phone Number' },
   { key: 'notice_period', label: 'Notice Period' },
   { key: 'desired_compensation', label: 'Desired Compensation' },
   { key: 'technology_highlights', label: 'Technology Highlights' },
@@ -117,6 +118,7 @@ function mapApplicantToSummary(a: any) {
   return {
     name: a.full_name || '',
     email: a.email || '',
+    phone: a.phone || '',
     notice_period: a.notice_period || '',
     desired_compensation: a.expected_salary || '',
     technology_highlights: tech,
@@ -357,7 +359,7 @@ export default function AdminPage() {
     setSummary(screenedResults.applicants.map(mapApplicantToSummary))
   }
 
-  const saveSummaryToJob = async (data: { highlights: Record<string, string>, note: string }) => {
+  const saveSummaryToJob = async (data: { highlights: Record<string, string>, note: string, selected: Record<string, boolean> }) => {
     if (!screenedResults || !summary) return
     const jobTitle = jobOpenings.find(j => j.id === screenedResults.jobId)?.title || ''
     const res = await fetch('/api/admin/cv-summaries', {
@@ -366,7 +368,7 @@ export default function AdminPage() {
       body: JSON.stringify({
         job_id: screenedResults.jobId,
         job_title: jobTitle,
-        summary_data: { applicants: summary, highlights: data.highlights, note: data.note },
+        summary_data: { applicants: summary, highlights: data.highlights, note: data.note, selected: data.selected },
       }),
     })
     if (!res.ok) { const { error } = await res.json().catch(() => ({})); alert(error || 'Could not save summary') }
@@ -963,6 +965,7 @@ function JobDetail({ job, isScreening, totalApplicants, onClose, onDelete, onTog
                 subtitle={`Saved ${new Date(s.created_at).toLocaleString()}`}
                 initialHighlights={s.summary_data?.highlights || {}}
                 initialNote={s.summary_data?.note || ''}
+                initialSelected={s.summary_data?.selected || {}}
                 readOnly
                 onDelete={() => deleteSavedSummary(s.id)} />
             ))}
@@ -1170,20 +1173,22 @@ function FilterRibbon({ row, index, totalRows, roles, onChange, onRemove }: {
 }
 
 // ─── CV Summary Table ───────────────────────────────────────────────────────────
-function CvSummaryTable({ applicants, jobTitle, subtitle, onClose, onSave, onDelete, initialHighlights, initialNote, readOnly }: {
+function CvSummaryTable({ applicants, jobTitle, subtitle, onClose, onSave, onDelete, initialHighlights, initialNote, initialSelected, readOnly }: {
   applicants: any[]
   jobTitle: string
   subtitle?: string
   onClose?: () => void
-  onSave?: (data: { highlights: Record<string, string>, note: string }) => Promise<void> | void
+  onSave?: (data: { highlights: Record<string, string>, note: string, selected: Record<string, boolean> }) => Promise<void> | void
   onDelete?: () => void
   initialHighlights?: Record<string, string>
   initialNote?: string
+  initialSelected?: Record<string, boolean>
   readOnly?: boolean
 }) {
   const [editing, setEditing] = useState(false)
   const [highlights, setHighlights] = useState<Record<string, string>>(initialHighlights || {})
   const [note, setNote] = useState(initialNote || '')
+  const [selected, setSelected] = useState<Record<string, boolean>>(initialSelected || {})
   const [saving, setSaving] = useState(false)
   const [savedMsg, setSavedMsg] = useState('')
 
@@ -1194,6 +1199,11 @@ function CvSummaryTable({ applicants, jobTitle, subtitle, onClose, onSave, onDel
     const cur = highlights[k] || ''
     const next = HILITE_CYCLE[(HILITE_CYCLE.indexOf(cur) + 1) % HILITE_CYCLE.length]
     setHighlights(h => { const n = { ...h }; if (next) n[k] = next; else delete n[k]; return n })
+  }
+  const toggleSelected = (i: number) => {
+    if (readOnly) return
+    const k = String(i)
+    setSelected(s => ({ ...s, [k]: !s[k] }))
   }
 
   const exportExcel = () => {
@@ -1206,8 +1216,9 @@ function CvSummaryTable({ applicants, jobTitle, subtitle, onClose, onSave, onDel
       }).join('')
       return `<tr><td style="border:1px solid #999;padding:8px 14px;background:#f0f0f0;font-weight:bold;">${row.label}</td>${cells}</tr>`
     }).join('')
+    const selectedRow = `<tr><td style="border:1px solid #999;padding:8px 14px;background:#f0f0f0;font-weight:bold;">Selected</td>${applicants.map((_, i) => `<td style="border:1px solid #999;padding:8px 14px;text-align:center;font-size:15pt;color:#111;">${selected[String(i)] ? '\u2713' : ''}</td>`).join('')}</tr>`
     const noteRow = note ? `<tr><td colspan="${applicants.length + 1}" style="border:1px solid #999;padding:8px 14px;background:#fffbe6;">Note: ${esc(note)}</td></tr>` : ''
-    const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"/></head><body><table style="border-collapse:collapse;font-family:Calibri,Arial,sans-serif;font-size:12pt;"><tr><th style="border:1px solid #999;padding:8px 14px;background:#C41E3A;color:#fff;font-weight:bold;text-align:left;">Detail</th>${head}</tr>${rows}${noteRow}</table></body></html>`
+    const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"/></head><body><table style="border-collapse:collapse;font-family:Calibri,Arial,sans-serif;font-size:12pt;"><tr><th style="border:1px solid #999;padding:8px 14px;background:#C41E3A;color:#fff;font-weight:bold;text-align:left;">Detail</th>${head}</tr>${rows}${selectedRow}${noteRow}</table></body></html>`
     const blob = new Blob([html], { type: 'application/vnd.ms-excel' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -1220,7 +1231,7 @@ function CvSummaryTable({ applicants, jobTitle, subtitle, onClose, onSave, onDel
   const handleSave = async () => {
     if (!onSave) return
     setSaving(true)
-    await onSave({ highlights, note })
+    await onSave({ highlights, note, selected })
     setSaving(false)
     setEditing(false)
     setSavedMsg('Saved to this job opening')
@@ -1243,7 +1254,7 @@ function CvSummaryTable({ applicants, jobTitle, subtitle, onClose, onSave, onDel
         {onClose && <button onClick={onClose} style={{ border: 'none', background: 'none', fontSize: 20, cursor: 'pointer', color: '#999', lineHeight: 1 }}>×</button>}
       </div>
 
-      {editing && !readOnly && <div style={{ fontSize: 12, color: '#646C72', marginBottom: 8 }}>Click any applicant cell to cycle its highlight colour (none → yellow → green → pink).</div>}
+      {editing && !readOnly && <div style={{ fontSize: 12, color: '#646C72', marginBottom: 8 }}>Click any applicant cell to cycle its highlight colour (none → yellow → green → pink). Tick the Selected box to mark a candidate.</div>}
 
       <div style={{ overflowX: 'auto' }}>
         <table style={{ borderCollapse: 'collapse', width: '100%' }}>
@@ -1268,6 +1279,21 @@ function CvSummaryTable({ applicants, jobTitle, subtitle, onClose, onSave, onDel
                 })}
               </tr>
             ))}
+            <tr>
+              <td style={{ ...tdStyle, fontWeight: 600, background: '#f8f9fa' }}>Selected</td>
+              {applicants.map((_, i) => (
+                <td key={i} style={{ ...tdStyle, textAlign: 'center' }}>
+                  <div onClick={() => toggleSelected(i)}
+                    style={{ width: 24, height: 24, margin: '0 auto', border: '1.5px solid #888', borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: readOnly ? 'default' : 'pointer', background: '#fff' }}>
+                    {selected[String(i)] && (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
+                  </div>
+                </td>
+              ))}
+            </tr>
           </tbody>
         </table>
       </div>
