@@ -551,7 +551,7 @@ ${techData.length>0?`<tr><th rowspan="${Math.max(Math.ceil(techData.length/2),1)
 
   // ─── Main dashboard ───────────────────────────────────────────────────────────
   return (
-    <div style={{ minHeight: '100vh', background: '#B9BCBE' }}>
+    <div style={{ minHeight: '100vh', background: '#F3F3F3' }}>
 
       {/* Header */}
       <div style={{ background: '#C41E3A', borderBottom: '1px solid #8B0000', padding: '14px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
