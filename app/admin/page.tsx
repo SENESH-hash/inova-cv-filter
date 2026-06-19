@@ -665,11 +665,10 @@ ${techData.length>0?`<tr><th rowspan="${Math.max(Math.ceil(techData.length/2),1)
 
   // ─── Main dashboard ───────────────────────────────────────────────────────────
   return (
-    <div style={{ height: '100vh', overflowY: 'auto' as const, background: '#F3F3F3', filter: darkMode ? 'invert(1) hue-rotate(180deg)' : undefined }}>
-      {darkMode && <style>{`.no-invert { filter: hue-rotate(180deg) invert(1); }`}</style>}
+    <div style={{ display: 'flex', flexDirection: 'column' as const, height: '100vh', background: darkMode ? '#000' : '#F3F3F3' }}>
 
-      {/* Header */}
-      <div className="no-invert" style={{ background: '#C41E3A', borderBottom: '1px solid #8B0000', padding: '14px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      {/* Header — always real brand red, kept outside the dark-mode filter */}
+      <div style={{ background: '#C41E3A', borderBottom: '1px solid #8B0000', padding: '14px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: '#fff' }}>Inova IT — Admin</h1>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           {activeTab === 'cvs' && (
@@ -689,6 +688,9 @@ ${techData.length>0?`<tr><th rowspan="${Math.max(Math.ceil(techData.length/2),1)
           <button onClick={() => { localStorage.removeItem('admin_token'); setToken(null) }} style={{ ...styles.secondaryBtn, color: '#ffaaaa', borderColor: 'rgba(255,255,255,0.3)' }}>Sign Out</button>
         </div>
       </div>
+
+      {/* Scrollable content — dark-mode filter lives here, not on the header */}
+      <div style={{ flex: 1, overflowY: 'auto' as const, background: '#F3F3F3', filter: darkMode ? 'invert(1) hue-rotate(180deg)' : undefined, position: 'relative' as const }}>
 
       {/* Tabs */}
       <div style={{ background: '#fff', borderBottom: '2px solid #eee', padding: '0 28px', display: 'flex', gap: 0 }}>
@@ -910,6 +912,7 @@ ${techData.length>0?`<tr><th rowspan="${Math.max(Math.ceil(techData.length/2),1)
           onNo={() => setConfirmDialog(null)}
         />
       )}
+      </div>
     </div>
   )
 }
