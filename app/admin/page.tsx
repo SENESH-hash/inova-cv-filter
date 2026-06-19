@@ -1344,7 +1344,7 @@ function ApplicantCard({ applicant: a, rank, showScore, onSelect, onUpdate, onDe
         )}
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto' as const, minHeight: 0 }}>
+      <div style={{ flex: 1, overflowY: 'hidden' as const, minHeight: 0 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10, paddingRight: 80 }}>
         <div>
           <div style={{ fontWeight: 600, fontSize: 15 }}>{a.full_name}</div>
