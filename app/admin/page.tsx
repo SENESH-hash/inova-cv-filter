@@ -290,6 +290,9 @@ export default function AdminPage() {
   const [summary, setSummary] = useState<any[] | null>(null) // built CV comparison summary
   const [confirmDialog, setConfirmDialog] = useState<{ message: string, onYes: () => void } | null>(null)
   const askConfirm = (message: string, onYes: () => void) => setConfirmDialog({ message, onYes })
+  const [darkMode, setDarkMode] = useState(false)
+  useEffect(() => { setDarkMode(localStorage.getItem('admin_dark') === '1') }, [])
+  const toggleDark = () => setDarkMode(d => { localStorage.setItem('admin_dark', d ? '0' : '1'); return !d })
 
   useEffect(() => {
     const t = localStorage.getItem('admin_token')
@@ -662,7 +665,7 @@ ${techData.length>0?`<tr><th rowspan="${Math.max(Math.ceil(techData.length/2),1)
 
   // ─── Main dashboard ───────────────────────────────────────────────────────────
   return (
-    <div style={{ minHeight: '100vh', background: '#F3F3F3' }}>
+    <div style={{ height: '100vh', overflowY: 'auto' as const, background: '#F3F3F3', filter: darkMode ? 'invert(1) hue-rotate(180deg)' : undefined }}>
 
       {/* Header */}
       <div style={{ background: '#C41E3A', borderBottom: '1px solid #8B0000', padding: '14px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -673,6 +676,13 @@ ${techData.length>0?`<tr><th rowspan="${Math.max(Math.ceil(techData.length/2),1)
               {displayApplicants.length}{!screenedResults && displayApplicants.length !== applicants.length ? ` / ${applicants.length}` : ''} applicant{applicants.length !== 1 ? 's' : ''}
             </span>
           )}
+          <button onClick={toggleDark} title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'} aria-label="Toggle dark mode" style={{ ...styles.secondaryBtn, color: '#fff', borderColor: 'rgba(255,255,255,0.5)', padding: '7px 10px', lineHeight: 0 }}>
+            {darkMode ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" /></svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>
+            )}
+          </button>
           <button onClick={() => setShowRoleManager(!showRoleManager)} style={{ ...styles.secondaryBtn, background: showRoleManager ? '#f0f9f6' : 'transparent', color: showRoleManager ? '#0f6e56' : '#fff', borderColor: showRoleManager ? '#0f6e56' : 'rgba(255,255,255,0.5)' }}>Manage Roles</button>
           {activeTab === 'cvs' && <button onClick={exportCSV} style={{ ...styles.secondaryBtn, color: '#fff', borderColor: 'rgba(255,255,255,0.5)' }}>Export CSV</button>}
           <button onClick={() => { localStorage.removeItem('admin_token'); setToken(null) }} style={{ ...styles.secondaryBtn, color: '#ffaaaa', borderColor: 'rgba(255,255,255,0.3)' }}>Sign Out</button>
