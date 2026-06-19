@@ -176,16 +176,16 @@ function LoginScreen({ loginForm, setLoginForm, onSubmit, loginError, showPasswo
   return (
     <div style={{ minHeight: '100vh', display: 'flex' }}>
       {/* Left animated panel */}
-      <div style={{ flex: 1, position: 'relative' as const, background: '#0d0d0d', overflow: 'hidden', minWidth: 0 }}>
+      <div style={{ flex: 1, position: 'relative' as const, background: '#0d0d0d', overflow: 'hidden', minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <canvas ref={canvasRef} style={{ position: 'absolute' as const, inset: 0, width: '100%', height: '100%', display: 'block' }} />
+        <img src="/inova_logo_white.png" alt="INOVA" style={{ position: 'relative' as const, zIndex: 1, width: 240, maxWidth: '55%', objectFit: 'contain' as const }} />
       </div>
 
       {/* Right login panel */}
       <div style={{ flex: 1, background: '#d4d4d4', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, minWidth: 0 }}>
         <div style={{ background: '#fff', width: '100%', maxWidth: 380, padding: '40px 36px', boxShadow: '0 6px 24px rgba(0,0,0,0.12)' }}>
-          <div style={{ textAlign: 'center' as const, marginBottom: 4 }}>
-            <span style={{ fontSize: 34, fontWeight: 800, color: '#E2231A', letterSpacing: 1 }}>INOVA</span>
-            <span style={{ fontSize: 12, color: '#E2231A', verticalAlign: 'super' as const }}>®</span>
+          <div style={{ textAlign: 'center' as const, marginBottom: 8 }}>
+            <img src="/inova_logo_white.png" alt="INOVA" style={{ height: 54, objectFit: 'contain' as const }} />
           </div>
           <div style={{ textAlign: 'center' as const, fontStyle: 'italic', fontWeight: 700, color: '#1A232C', marginBottom: 30 }}>Inova CV Filter</div>
 
