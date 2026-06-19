@@ -159,6 +159,8 @@ export default function AdminPage() {
   const [screeningJob, setScreeningJob] = useState<string | null>(null) // job id being screened
   const [screenedResults, setScreenedResults] = useState<{ jobId: string; applicants: any[] } | null>(null)
   const [summary, setSummary] = useState<any[] | null>(null) // built CV comparison summary
+  const [confirmDialog, setConfirmDialog] = useState<{ message: string, onYes: () => void } | null>(null)
+  const askConfirm = (message: string, onYes: () => void) => setConfirmDialog({ message, onYes })
 
   useEffect(() => {
     const t = localStorage.getItem('admin_token')
@@ -391,14 +393,15 @@ export default function AdminPage() {
     setJobSaving(false)
   }
 
-  const deleteJob = async (id: string) => {
-    if (!confirm('Delete this job opening permanently?')) return
-    const res = await fetch('/api/admin/job-openings', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ id }),
+  const deleteJob = (id: string) => {
+    askConfirm('This will permanently delete this job opening. This action cannot be undone.', async () => {
+      const res = await fetch('/api/admin/job-openings', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ id }),
+      })
+      if (res.ok) { fetchJobOpenings(); if (selectedJob?.id === id) setSelectedJob(null) }
     })
-    if (res.ok) { fetchJobOpenings(); if (selectedJob?.id === id) setSelectedJob(null) }
   }
 
   const toggleJobStatus = async (job: JobOpening) => {
@@ -431,19 +434,22 @@ export default function AdminPage() {
     })
     if (res.ok) { setNewRole(''); fetchRoles() }
   }
-  const deleteRole = async (id: string) => {
-    await fetch('/api/admin/roles', {
-      method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ id })
+  const deleteRole = (id: string) => {
+    askConfirm('This will permanently delete this role. This action cannot be undone.', async () => {
+      await fetch('/api/admin/roles', {
+        method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ id })
+      })
+      fetchRoles()
     })
-    fetchRoles()
   }
 
-  const deleteApplicant = async (id: string) => {
-    if (!confirm('Are you sure you want to permanently delete this applicant?')) return
-    await fetch(`/api/admin/applicants/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
-    setApplicants(prev => prev.filter(a => a.id !== id))
-    setSelected(null)
+  const deleteApplicant = (id: string) => {
+    askConfirm('This will permanently delete this applicant and their CV. This action cannot be undone.', async () => {
+      await fetch(`/api/admin/applicants/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+      setApplicants(prev => prev.filter(a => a.id !== id))
+      setSelected(null)
+    })
   }
 
   const updateApplicant = async (id: string, updates: any) => {
@@ -763,6 +769,7 @@ ${techData.length>0?`<tr><th rowspan="${Math.max(Math.ceil(techData.length/2),1)
             job={selectedJob}
             isScreening={screeningJob === selectedJob.id}
             totalApplicants={applicants.length}
+            askConfirm={askConfirm}
             onClose={() => setSelectedJob(null)}
             onDelete={() => { deleteJob(selectedJob.id) }}
             onToggleStatus={() => toggleJobStatus(selectedJob)}
@@ -777,6 +784,15 @@ ${techData.length>0?`<tr><th rowspan="${Math.max(Math.ceil(techData.length/2),1)
           onClick={e => e.target === e.currentTarget && setShowJobForm(false)}>
           <JobForm form={jobForm} onChange={setJobForm} onSave={saveJob} onCancel={() => { setShowJobForm(false); setJobForm(EMPTY_JOB()) }} saving={jobSaving} />
         </div>
+      )}
+
+      {/* ── Delete Confirmation ── */}
+      {confirmDialog && (
+        <ConfirmDialog
+          message={confirmDialog.message}
+          onYes={() => { confirmDialog.onYes(); setConfirmDialog(null) }}
+          onNo={() => setConfirmDialog(null)}
+        />
       )}
     </div>
   )
@@ -864,10 +880,11 @@ function JobCard({ job, isScreening, onSelect, onDelete, onToggleStatus, onScree
 }
 
 // ─── Job Detail Modal ──────────────────────────────────────────────────────────
-function JobDetail({ job, isScreening, totalApplicants, onClose, onDelete, onToggleStatus, onScreen }: {
+function JobDetail({ job, isScreening, totalApplicants, askConfirm, onClose, onDelete, onToggleStatus, onScreen }: {
   job: JobOpening
   isScreening: boolean
   totalApplicants: number
+  askConfirm: (message: string, onYes: () => void) => void
   onClose: () => void
   onDelete: () => void
   onToggleStatus: () => void
@@ -883,10 +900,12 @@ function JobDetail({ job, isScreening, totalApplicants, onClose, onDelete, onTog
       .catch(() => {})
       .finally(() => setLoadingSummaries(false))
   }, [job.id])
-  const deleteSavedSummary = async (id: string) => {
-    const tok = localStorage.getItem('admin_token')
-    await fetch('/api/admin/cv-summaries', { method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` }, body: JSON.stringify({ id }) })
-    setSavedSummaries(s => s.filter(x => x.id !== id))
+  const deleteSavedSummary = (id: string) => {
+    askConfirm('This will permanently delete this saved CV summary. This action cannot be undone.', async () => {
+      const tok = localStorage.getItem('admin_token')
+      await fetch('/api/admin/cv-summaries', { method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` }, body: JSON.stringify({ id }) })
+      setSavedSummaries(s => s.filter(x => x.id !== id))
+    })
   }
   return (
     <div style={{ background: '#fff', borderRadius: 14, width: '100%', maxWidth: 1100, maxHeight: '90vh', overflowY: 'auto' as const, padding: 32 }}>
@@ -1795,6 +1814,24 @@ function Row({ label, value }: any) {
     <div style={{ display: 'flex', marginBottom: 6, fontSize: 14 }}>
       <span style={{ color: '#888', width: 130, flexShrink: 0 }}>{label}</span>
       <span style={{ color: '#1a1a1a' }}>{value}</span>
+    </div>
+  )
+}
+
+// ─── Delete Confirmation Dialog ──────────────────────────────────────────────
+function ConfirmDialog({ message, onYes, onNo }: { message: string, onYes: () => void, onNo: () => void }) {
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1000, paddingTop: 80 }}
+      onClick={e => e.target === e.currentTarget && onNo()}>
+      <style>{`@keyframes confirmPop { 0% { transform: scale(0.1); opacity: 0; border-radius: 50%; } 55% { opacity: 1; } 100% { transform: scale(1); opacity: 1; border-radius: 14px; } }`}</style>
+      <div style={{ background: '#fff', borderRadius: 14, padding: '24px 28px', width: '100%', maxWidth: 380, boxShadow: '0 12px 40px rgba(0,0,0,0.28)', transformOrigin: 'top center', animation: 'confirmPop 0.30s cubic-bezier(0.16,1,0.3,1)', textAlign: 'center' as const }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#1A232C', marginBottom: 6 }}>Confirm deletion</div>
+        <div style={{ fontSize: 14, color: '#555', marginBottom: 20, lineHeight: 1.5 }}>{message}</div>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+          <button onClick={onYes} style={{ padding: '9px 30px', background: '#C41E3A', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Yes</button>
+          <button onClick={onNo} style={{ padding: '9px 30px', background: '#fff', color: '#646C72', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>No</button>
+        </div>
+      </div>
     </div>
   )
 }
