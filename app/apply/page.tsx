@@ -37,14 +37,14 @@ function DotBackground() {
     const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight }
     resize()
     window.addEventListener('resize', resize)
-    const N = 120
+    const N = 70
     const dots = Array.from({ length: N }, () => ({
       x: Math.random() * canvas.width,
       y: Math.random() * canvas.height,
-      vx: (Math.random() - 0.5) * 0.4,
-      vy: (Math.random() - 0.5) * 0.4,
-      r: Math.random() * 2.2 + 0.9,
-      a: Math.random() * 0.45 + 0.25,
+      vx: (Math.random() - 0.5) * 0.5,
+      vy: (Math.random() - 0.5) * 0.5,
+      r: Math.random() * 1.8 + 0.5,
+      a: Math.random() * 0.5 + 0.25,
     }))
     const tick = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -56,7 +56,7 @@ function DotBackground() {
         if (d.y > canvas.height) d.y = 0
         ctx.beginPath()
         ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(196,30,58,${d.a})`
+        ctx.fillStyle = `rgba(226,35,26,${d.a})`
         ctx.fill()
       }
       raf = requestAnimationFrame(tick)
@@ -561,7 +561,7 @@ function Field({ label, name, value, onChange, type = 'text', required = false, 
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  page: { minHeight: '100vh', background: '#F9F9F9', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 16px' },
+  page: { minHeight: '100vh', background: '#0d0d0d', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 16px' },
   card: { background: '#fff', borderRadius: 14, padding: '36px 40px', width: '100%', maxWidth: 700, boxShadow: '0 2px 20px rgba(196,30,58,0.08)', position: 'relative' as const, zIndex: 1 },
   grid2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 },
   label: { display: 'block', fontSize: 13, fontWeight: 500, color: '#444', marginBottom: 6 },
