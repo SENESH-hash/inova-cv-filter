@@ -695,7 +695,7 @@ ${techData.length>0?`<tr><th rowspan="${Math.max(Math.ceil(techData.length/2),1)
                 {applicants.length === 0 ? 'No applicants yet.' : 'No applicants match the current filters.'}
               </p>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+              <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 14 }}>
                 {displayApplicants.map((a, idx) => (
                   <ApplicantCard key={a.id} applicant={a} rank={idx + 1}
                     showScore={!!screenedResults}
@@ -1326,69 +1326,75 @@ function ApplicantCard({ applicant: a, rank, showScore, onSelect, onUpdate, onDe
     : ''
 
   return (
-    <div style={{ ...styles.glassCard, position: 'relative' as const, height: 430, display: 'flex', flexDirection: 'column' as const }} onClick={() => onSelect(a)}>
-      {/* Rank or Match Score badge */}
-      <div style={{ position: 'absolute' as const, top: 10, right: 10 }}>
-        {showScore && a.match_score != null ? (
-          <span style={{
-            background: a.match_score >= 70 ? '#d1fae5' : a.match_score >= 40 ? '#fef9c3' : '#fee2e2',
-            color: a.match_score >= 70 ? '#065f46' : a.match_score >= 40 ? '#854d0e' : '#991b1b',
-            borderRadius: 20, fontSize: 12, fontWeight: 700, padding: '3px 10px'
-          }}>
-            {a.match_score}% match
-          </span>
-        ) : (
-          <span style={{ background: '#f0f0f0', borderRadius: 20, fontSize: 11, color: '#888', padding: '2px 8px', fontWeight: 600 }}>
-            #{rank}
-          </span>
-        )}
+    <div style={{ ...styles.glassCard, position: 'relative' as const, display: 'flex', flexDirection: 'row' as const, gap: 18, alignItems: 'flex-start' }} onClick={() => onSelect(a)}>
+
+      {/* ── Identity ── */}
+      <div style={{ flex: '0 0 220px', minWidth: 0 }}>
+        <div style={{ fontWeight: 600, fontSize: 15 }}>{a.full_name}</div>
+        <div style={{ fontSize: 13, color: '#555', marginTop: 2, marginBottom: 8 }}>{a.desired_role}</div>
+        <span style={{ background: STATUS_COLORS[a.status] + '18', color: STATUS_COLORS[a.status], fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, display: 'inline-block' }}>{a.status}</span>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto' as const, minHeight: 0 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10, paddingRight: 80 }}>
-        <div>
-          <div style={{ fontWeight: 600, fontSize: 15 }}>{a.full_name}</div>
-          <div style={{ fontSize: 13, color: '#555', marginTop: 2 }}>{a.desired_role}</div>
-        </div>
-        <span style={{ background: STATUS_COLORS[a.status] + '18', color: STATUS_COLORS[a.status], fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, flexShrink: 0 }}>{a.status}</span>
-      </div>
-      <div style={{ fontSize: 13, color: '#444', marginBottom: 8 }}>
+      {/* ── Contact & experience ── */}
+      <div style={{ flex: '1 1 260px', minWidth: 0, fontSize: 13, color: '#444' }}>
         <div>📧 {a.email}</div>
         {ed.location && <div>📍 {ed.location}</div>}
         {(a.experience_years != null || a.experience_months != null) && <div>⏱ {a.experience_years || 0}Y {a.experience_months || 0}M experience</div>}
         {ed.degree_level && <div>🎓 {ed.degree_level}{ed.field_of_study ? ` · ${ed.field_of_study}` : ''}</div>}
         {langDisplay && <div>🌐 {langDisplay}</div>}
       </div>
-      {(a.is_internship || a.work_preference || a.internal_staff_note) && (
-        <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4, marginBottom: 6 }}>
-          {a.is_internship && <span style={{ background: '#fef3c7', color: '#92400e', borderRadius: 4, padding: '2px 7px', fontSize: 11, fontWeight: 600 }}>Internship</span>}
-          {a.work_preference && <span style={{ background: '#e0e7ff', color: '#3730a3', borderRadius: 4, padding: '2px 7px', fontSize: 11, fontWeight: 600 }}>{a.work_preference}</span>}
-          {a.internal_staff_note && <span style={{ background: '#f1f5f9', color: '#475569', borderRadius: 4, padding: '2px 7px', fontSize: 11, fontWeight: 600 }}>Internal Staff</span>}
-        </div>
-      )}
-      {a.selected_roles?.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4, marginBottom: 6 }}>
-          {a.selected_roles.slice(0, 2).map((r: string) => (
-            <span key={r} style={{ background: '#e8f5f1', borderRadius: 4, padding: '2px 7px', fontSize: 11, color: '#0f6e56' }}>{r}</span>
-          ))}
-        </div>
-      )}
-      {ed.skills?.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4 }}>
-          {ed.skills.slice(0, 4).map((s: string) => (
-            <span key={s} style={{ background: '#f0f0f0', borderRadius: 4, padding: '2px 7px', fontSize: 11, color: '#444' }}>{s}</span>
-          ))}
-          {ed.skills.length > 4 && <span style={{ fontSize: 11, color: '#999' }}>+{ed.skills.length - 4} more</span>}
-        </div>
-      )}
-      <div style={{ marginTop: 10, fontSize: 12, color: '#888' }}>
-        {new Date(a.submitted_at).toLocaleDateString()}
-        {a.updated_at && <span> · Updated {new Date(a.updated_at).toLocaleDateString()}</span>}
+
+      {/* ── Tags, roles, skills ── */}
+      <div style={{ flex: '1 1 260px', minWidth: 0, display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
+        {(a.is_internship || a.work_preference || a.internal_staff_note) && (
+          <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4 }}>
+            {a.is_internship && <span style={{ background: '#fef3c7', color: '#92400e', borderRadius: 4, padding: '2px 7px', fontSize: 11, fontWeight: 600 }}>Internship</span>}
+            {a.work_preference && <span style={{ background: '#e0e7ff', color: '#3730a3', borderRadius: 4, padding: '2px 7px', fontSize: 11, fontWeight: 600 }}>{a.work_preference}</span>}
+            {a.internal_staff_note && <span style={{ background: '#f1f5f9', color: '#475569', borderRadius: 4, padding: '2px 7px', fontSize: 11, fontWeight: 600 }}>Internal Staff</span>}
+          </div>
+        )}
+        {a.selected_roles?.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4 }}>
+            {a.selected_roles.slice(0, 2).map((r: string) => (
+              <span key={r} style={{ background: '#e8f5f1', borderRadius: 4, padding: '2px 7px', fontSize: 11, color: '#0f6e56' }}>{r}</span>
+            ))}
+          </div>
+        )}
+        {ed.skills?.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4 }}>
+            {ed.skills.slice(0, 4).map((s: string) => (
+              <span key={s} style={{ background: '#f0f0f0', borderRadius: 4, padding: '2px 7px', fontSize: 11, color: '#444' }}>{s}</span>
+            ))}
+            {ed.skills.length > 4 && <span style={{ fontSize: 11, color: '#999' }}>+{ed.skills.length - 4} more</span>}
+          </div>
+        )}
+        {a.referral_source && <div style={{ fontSize: 12, color: '#888', background: '#fffbe6', borderRadius: 5, padding: '4px 8px' }}>👥 Via {a.referral_source}{a.referral_name ? ` (${a.referral_name})` : ''}</div>}
       </div>
-      {a.referral_source && <div style={{ marginTop: 6, fontSize: 12, color: '#888', background: '#fffbe6', borderRadius: 5, padding: '4px 8px' }}>👥 Via {a.referral_source}{a.referral_name ? ` (${a.referral_name})` : ''}</div>}
-      </div>
-      <div style={{ marginTop: 10, display: 'flex', gap: 6 }} onClick={e => e.stopPropagation()}>
-        <button onClick={() => onDelete(a.id)} style={{ flex: 1, padding: '5px', background: '#fff0f0', border: '1px solid #fcc', borderRadius: 6, fontSize: 12, color: '#c00', cursor: 'pointer' }}>🗑 Delete</button>
+
+      {/* ── Meta & actions ── */}
+      <div style={{ flex: '0 0 170px', display: 'flex', flexDirection: 'column' as const, alignItems: 'flex-end', justifyContent: 'space-between', alignSelf: 'stretch', gap: 10 }}>
+        <div>
+          {showScore && a.match_score != null ? (
+            <span style={{
+              background: a.match_score >= 70 ? '#d1fae5' : a.match_score >= 40 ? '#fef9c3' : '#fee2e2',
+              color: a.match_score >= 70 ? '#065f46' : a.match_score >= 40 ? '#854d0e' : '#991b1b',
+              borderRadius: 20, fontSize: 12, fontWeight: 700, padding: '3px 10px'
+            }}>
+              {a.match_score}% match
+            </span>
+          ) : (
+            <span style={{ background: '#f0f0f0', borderRadius: 20, fontSize: 11, color: '#888', padding: '2px 8px', fontWeight: 600 }}>
+              #{rank}
+            </span>
+          )}
+        </div>
+        <div style={{ fontSize: 12, color: '#888', textAlign: 'right' as const }}>
+          {new Date(a.submitted_at).toLocaleDateString()}
+          {a.updated_at && <div>Updated {new Date(a.updated_at).toLocaleDateString()}</div>}
+        </div>
+        <div onClick={e => e.stopPropagation()} style={{ width: '100%' }}>
+          <button onClick={() => onDelete(a.id)} style={{ width: '100%', padding: '5px', background: '#fff0f0', border: '1px solid #fcc', borderRadius: 6, fontSize: 12, color: '#c00', cursor: 'pointer' }}>🗑 Delete</button>
+        </div>
       </div>
     </div>
   )
