@@ -183,11 +183,21 @@ function LoginScreen({ loginForm, setLoginForm, onSubmit, loginError, showPasswo
   return (
     <div style={{ minHeight: '100vh', position: 'relative' as const, background: '#0d0d0d', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <canvas ref={canvasRef} style={{ position: 'absolute' as const, inset: 0, width: '100%', height: '100%', display: 'block', zIndex: 0 }} />
+      <style>{`
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover,
+        input:-webkit-autofill:focus {
+          -webkit-text-fill-color: #fff;
+          -webkit-box-shadow: 0 0 0 1000px transparent inset;
+          transition: background-color 9999s ease-in-out 0s;
+          caret-color: #fff;
+        }
+      `}</style>
 
       <div style={{ position: 'relative' as const, zIndex: 1, width: '100%', maxWidth: 380, display: 'flex', flexDirection: 'column' as const, alignItems: 'center' }}>
-        <img src="/inova-logo.png" alt="INOVA" style={{ width: 320, maxWidth: '90%', objectFit: 'contain' as const, marginBottom: -6 }} />
+        <img src="/inova-logo.png" alt="INOVA" style={{ width: 320, maxWidth: '90%', objectFit: 'contain' as const, marginBottom: -28 }} />
 
-        <div style={{ textAlign: 'center' as const, fontStyle: 'italic', fontWeight: 700, color: '#fff', marginBottom: 28 }}>Inova CV Filter</div>
+        <div style={{ textAlign: 'center' as const, fontStyle: 'italic', fontWeight: 700, color: '#fff', marginTop: 0, marginBottom: 28 }}>Inova CV Filter</div>
 
         <form onSubmit={onSubmit} style={{ width: '100%' }}>
           <label style={{ display: 'block', fontSize: 13, color: '#fff', fontWeight: 700, marginBottom: 6 }}>Username or email</label>
