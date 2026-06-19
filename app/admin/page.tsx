@@ -126,7 +126,6 @@ function mapApplicantToSummary(a: any) {
   }
 }
 
-// ─── Login Screen ───────────────────────────────────────────────────────────────
 function LoginScreen({ loginForm, setLoginForm, onSubmit, loginError, showPassword, setShowPassword }: {
   loginForm: { username: string, password: string }
   setLoginForm: React.Dispatch<React.SetStateAction<{ username: string, password: string }>>
@@ -145,28 +144,36 @@ function LoginScreen({ loginForm, setLoginForm, onSubmit, loginError, showPasswo
     const resize = () => { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight }
     resize()
     window.addEventListener('resize', resize)
-    const N = 70
+    const N = 90
     const dots = Array.from({ length: N }, () => ({
       x: Math.random() * canvas.width,
       y: Math.random() * canvas.height,
       vx: (Math.random() - 0.5) * 0.5,
       vy: (Math.random() - 0.5) * 0.5,
-      r: Math.random() * 1.8 + 0.5,
-      a: Math.random() * 0.5 + 0.25,
+      r: Math.random() * 1.1 + 0.5,
+      base: Math.random() * 0.4 + 0.5,
+      phase: Math.random() * Math.PI * 2,
+      tw: Math.random() * 0.04 + 0.02,
     }))
+    let frame = 0
     const tick = () => {
+      frame++
       ctx.clearRect(0, 0, canvas.width, canvas.height)
+      ctx.shadowColor = 'rgba(226,35,26,0.9)'
       for (const d of dots) {
         d.x += d.vx; d.y += d.vy
         if (d.x < 0) d.x = canvas.width
         if (d.x > canvas.width) d.x = 0
         if (d.y < 0) d.y = canvas.height
         if (d.y > canvas.height) d.y = 0
+        const a = d.base * (0.55 + 0.45 * Math.sin(d.phase + frame * d.tw))
+        ctx.shadowBlur = 10
         ctx.beginPath()
         ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(226,35,26,${d.a})`
+        ctx.fillStyle = `rgba(255,80,70,${a})`
         ctx.fill()
       }
+      ctx.shadowBlur = 0
       raf = requestAnimationFrame(tick)
     }
     tick()
@@ -174,48 +181,39 @@ function LoginScreen({ loginForm, setLoginForm, onSubmit, loginError, showPasswo
   }, [])
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex' }}>
-      <style>{`.login-input { border-bottom: 1px solid #ccc !important; transition: border-color 0.15s; } .login-input:focus { border-bottom-color: #C41E3A !important; }`}</style>
-      {/* Left animated panel */}
-      <div style={{ flex: 1, position: 'relative' as const, background: '#0d0d0d', overflow: 'hidden', minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <canvas ref={canvasRef} style={{ position: 'absolute' as const, inset: 0, width: '100%', height: '100%', display: 'block' }} />
-        <img src="/inova-logo.png" alt="INOVA" style={{ position: 'relative' as const, zIndex: 1, width: 460, maxWidth: '75%', objectFit: 'contain' as const }} />
-      </div>
+    <div style={{ minHeight: '100vh', position: 'relative' as const, background: '#0d0d0d', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <canvas ref={canvasRef} style={{ position: 'absolute' as const, inset: 0, width: '100%', height: '100%', display: 'block', zIndex: 0 }} />
 
-      {/* Right login panel */}
-      <div style={{ flex: 1, background: '#d4d4d4', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, minWidth: 0 }}>
-        <div style={{ background: '#fff', width: '100%', maxWidth: 380, padding: '40px 36px', boxShadow: '0 6px 24px rgba(0,0,0,0.12)' }}>
-          <div style={{ textAlign: 'center' as const, marginBottom: -8 }}>
-            <img src="/inova-logo.png" alt="INOVA" style={{ height: 120, objectFit: 'contain' as const }} />
+      <div style={{ position: 'relative' as const, zIndex: 1, width: '100%', maxWidth: 380, display: 'flex', flexDirection: 'column' as const, alignItems: 'center' }}>
+        <img src="/inova-logo.png" alt="INOVA" style={{ width: 320, maxWidth: '90%', objectFit: 'contain' as const, marginBottom: -6 }} />
+
+        <div style={{ textAlign: 'center' as const, fontStyle: 'italic', fontWeight: 700, color: '#fff', marginBottom: 28 }}>Inova CV Filter</div>
+
+        <form onSubmit={onSubmit} style={{ width: '100%' }}>
+          <label style={{ display: 'block', fontSize: 13, color: '#fff', fontWeight: 700, marginBottom: 6 }}>Username or email</label>
+          <input value={loginForm.username} onChange={e => setLoginForm(f => ({ ...f, username: e.target.value }))}
+            style={{ width: '100%', boxSizing: 'border-box' as const, border: 'none', borderBottom: '1px solid rgba(255,255,255,0.5)', padding: '8px 2px', fontSize: 14, outline: 'none', marginBottom: 22, background: 'transparent', color: '#fff' }} />
+
+          <label style={{ display: 'block', fontSize: 13, color: '#fff', fontWeight: 700, marginBottom: 6 }}>Password</label>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, marginBottom: 24 }}>
+            <input type={showPassword ? 'text' : 'password'} value={loginForm.password}
+              onChange={e => setLoginForm(f => ({ ...f, password: e.target.value }))}
+              style={{ flex: 1, boxSizing: 'border-box' as const, border: 'none', borderBottom: '1px solid rgba(255,255,255,0.5)', padding: '8px 2px', fontSize: 14, outline: 'none', background: 'transparent', color: '#fff' }} />
+            <button type="button" onClick={() => setShowPassword(s => !s)}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              style={{ border: '1px solid rgba(255,255,255,0.6)', borderRadius: 3, padding: '5px 8px', background: 'transparent', cursor: 'pointer', lineHeight: 0, color: '#fff' }}>
+              {showPassword ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+              )}
+            </button>
           </div>
-          <div style={{ textAlign: 'center' as const, fontStyle: 'italic', fontWeight: 700, color: '#1A232C', marginTop: 0, marginBottom: 24 }}>Inova CV Filter</div>
 
-          <form onSubmit={onSubmit}>
-            <label style={{ display: 'block', fontSize: 13, color: '#646C72', marginBottom: 6 }}>Username or email</label>
-            <input className="login-input" value={loginForm.username} onChange={e => setLoginForm(f => ({ ...f, username: e.target.value }))}
-              style={{ width: '100%', boxSizing: 'border-box' as const, border: 'none', borderBottom: '1px solid #ccc', padding: '8px 2px', fontSize: 14, outline: 'none', marginBottom: 22, background: 'transparent' }} />
+          {loginError && <p style={{ color: '#ff8a8a', fontSize: 13, margin: '0 0 12px' }}>{loginError}</p>}
 
-            <label style={{ display: 'block', fontSize: 13, color: '#646C72', marginBottom: 6 }}>Password</label>
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, marginBottom: 24 }}>
-              <input className="login-input" type={showPassword ? 'text' : 'password'} value={loginForm.password}
-                onChange={e => setLoginForm(f => ({ ...f, password: e.target.value }))}
-                style={{ flex: 1, boxSizing: 'border-box' as const, border: 'none', borderBottom: '1px solid #ccc', padding: '8px 2px', fontSize: 14, outline: 'none', background: 'transparent' }} />
-              <button type="button" onClick={() => setShowPassword(s => !s)}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-                style={{ border: '1px solid #ccc', borderRadius: 3, padding: '5px 8px', background: '#fff', cursor: 'pointer', lineHeight: 0, color: '#646C72' }}>
-                {showPassword ? (
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
-                ) : (
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
-                )}
-              </button>
-            </div>
-
-            {loginError && <p style={{ color: '#c00', fontSize: 13, margin: '0 0 12px' }}>{loginError}</p>}
-
-            <button type="submit" style={{ width: '100%', padding: '11px', background: '#C41E3A', color: '#fff', border: 'none', borderRadius: 4, fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>Sign In</button>
-          </form>
-        </div>
+          <button type="submit" style={{ width: '100%', padding: '11px', background: '#C41E3A', color: '#fff', border: 'none', borderRadius: 4, fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>Sign In</button>
+        </form>
       </div>
     </div>
   )
