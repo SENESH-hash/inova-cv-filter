@@ -175,6 +175,7 @@ function LoginScreen({ loginForm, setLoginForm, onSubmit, loginError, showPasswo
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex' }}>
+      <style>{`.login-input { border-bottom: 1px solid #ccc !important; transition: border-color 0.15s; } .login-input:focus { border-bottom-color: #C41E3A !important; }`}</style>
       {/* Left animated panel */}
       <div style={{ flex: 1, position: 'relative' as const, background: '#0d0d0d', overflow: 'hidden', minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <canvas ref={canvasRef} style={{ position: 'absolute' as const, inset: 0, width: '100%', height: '100%', display: 'block' }} />
@@ -191,12 +192,12 @@ function LoginScreen({ loginForm, setLoginForm, onSubmit, loginError, showPasswo
 
           <form onSubmit={onSubmit}>
             <label style={{ display: 'block', fontSize: 13, color: '#646C72', marginBottom: 6 }}>Username or email</label>
-            <input value={loginForm.username} onChange={e => setLoginForm(f => ({ ...f, username: e.target.value }))}
+            <input className="login-input" value={loginForm.username} onChange={e => setLoginForm(f => ({ ...f, username: e.target.value }))}
               style={{ width: '100%', boxSizing: 'border-box' as const, border: 'none', borderBottom: '1px solid #ccc', padding: '8px 2px', fontSize: 14, outline: 'none', marginBottom: 22, background: 'transparent' }} />
 
             <label style={{ display: 'block', fontSize: 13, color: '#646C72', marginBottom: 6 }}>Password</label>
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, marginBottom: 24 }}>
-              <input type={showPassword ? 'text' : 'password'} value={loginForm.password}
+              <input className="login-input" type={showPassword ? 'text' : 'password'} value={loginForm.password}
                 onChange={e => setLoginForm(f => ({ ...f, password: e.target.value }))}
                 style={{ flex: 1, boxSizing: 'border-box' as const, border: 'none', borderBottom: '1px solid #ccc', padding: '8px 2px', fontSize: 14, outline: 'none', background: 'transparent' }} />
               <button type="button" onClick={() => setShowPassword(s => !s)}
@@ -212,7 +213,7 @@ function LoginScreen({ loginForm, setLoginForm, onSubmit, loginError, showPasswo
 
             {loginError && <p style={{ color: '#c00', fontSize: 13, margin: '0 0 12px' }}>{loginError}</p>}
 
-            <button type="submit" style={{ width: '100%', padding: '11px', background: '#1565D8', color: '#fff', border: 'none', borderRadius: 4, fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>Sign In</button>
+            <button type="submit" style={{ width: '100%', padding: '11px', background: '#C41E3A', color: '#fff', border: 'none', borderRadius: 4, fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>Sign In</button>
           </form>
         </div>
       </div>
