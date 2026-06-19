@@ -180,10 +180,15 @@ function LoginScreen({ loginForm, setLoginForm, onSubmit, loginError, showPasswo
     return () => { cancelAnimationFrame(raf); window.removeEventListener('resize', resize) }
   }, [])
 
+  const fieldRow: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid rgba(255,255,255,0.4)', marginBottom: 26, padding: '6px 2px' }
+  const fieldInput: React.CSSProperties = { flex: 1, border: 'none', background: 'transparent', outline: 'none', color: '#fff', fontSize: 14, padding: '4px 0' }
+  const fieldIcon: React.CSSProperties = { color: 'rgba(255,255,255,0.7)', display: 'flex', flexShrink: 0 }
+
   return (
     <div style={{ minHeight: '100vh', position: 'relative' as const, background: '#0d0d0d', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <canvas ref={canvasRef} style={{ position: 'absolute' as const, inset: 0, width: '100%', height: '100%', display: 'block', zIndex: 0 }} />
       <style>{`
+        .login-field::placeholder { color: rgba(255,255,255,0.55); }
         input:-webkit-autofill,
         input:-webkit-autofill:hover,
         input:-webkit-autofill:focus {
@@ -194,24 +199,39 @@ function LoginScreen({ loginForm, setLoginForm, onSubmit, loginError, showPasswo
         }
       `}</style>
 
-      <div style={{ position: 'relative' as const, zIndex: 1, width: '100%', maxWidth: 380, display: 'flex', flexDirection: 'column' as const, alignItems: 'center' }}>
-        <img src="/inova-logo.png" alt="INOVA" style={{ width: 320, maxWidth: '90%', objectFit: 'contain' as const, marginBottom: -28 }} />
+      <div style={{
+        position: 'relative' as const, zIndex: 1, width: '100%', maxWidth: 520,
+        background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
+        borderRadius: 16, backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
+        boxShadow: '0 10px 40px rgba(0,0,0,0.45)', padding: '44px 56px 52px'
+      }}>
+        <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center' }}>
+          <img src="/inova-logo.png" alt="INOVA" style={{ width: 240, maxWidth: '80%', objectFit: 'contain' as const, marginBottom: -22 }} />
+          <div style={{ textAlign: 'center' as const, fontStyle: 'italic', fontWeight: 700, color: '#fff', marginBottom: 30 }}>Inova CV Filter</div>
+        </div>
 
-        <div style={{ textAlign: 'center' as const, fontStyle: 'italic', fontWeight: 700, color: '#fff', marginTop: 0, marginBottom: 28 }}>Inova CV Filter</div>
+        <form onSubmit={onSubmit}>
+          {/* Username */}
+          <div style={fieldRow}>
+            <span style={fieldIcon}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+            </span>
+            <input className="login-field" placeholder="Username or email"
+              value={loginForm.username} onChange={e => setLoginForm(f => ({ ...f, username: e.target.value }))}
+              style={fieldInput} />
+          </div>
 
-        <form onSubmit={onSubmit} style={{ width: '100%' }}>
-          <label style={{ display: 'block', fontSize: 13, color: '#fff', fontWeight: 700, marginBottom: 6 }}>Username or email</label>
-          <input value={loginForm.username} onChange={e => setLoginForm(f => ({ ...f, username: e.target.value }))}
-            style={{ width: '100%', boxSizing: 'border-box' as const, border: 'none', borderBottom: '1px solid rgba(255,255,255,0.5)', padding: '8px 2px', fontSize: 14, outline: 'none', marginBottom: 22, background: 'transparent', color: '#fff' }} />
-
-          <label style={{ display: 'block', fontSize: 13, color: '#fff', fontWeight: 700, marginBottom: 6 }}>Password</label>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, marginBottom: 24 }}>
-            <input type={showPassword ? 'text' : 'password'} value={loginForm.password}
-              onChange={e => setLoginForm(f => ({ ...f, password: e.target.value }))}
-              style={{ flex: 1, boxSizing: 'border-box' as const, border: 'none', borderBottom: '1px solid rgba(255,255,255,0.5)', padding: '8px 2px', fontSize: 14, outline: 'none', background: 'transparent', color: '#fff' }} />
+          {/* Password */}
+          <div style={fieldRow}>
+            <span style={fieldIcon}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+            </span>
+            <input className="login-field" type={showPassword ? 'text' : 'password'} placeholder="Password"
+              value={loginForm.password} onChange={e => setLoginForm(f => ({ ...f, password: e.target.value }))}
+              style={fieldInput} />
             <button type="button" onClick={() => setShowPassword(s => !s)}
               aria-label={showPassword ? 'Hide password' : 'Show password'}
-              style={{ border: '1px solid rgba(255,255,255,0.6)', borderRadius: 3, padding: '5px 8px', background: 'transparent', cursor: 'pointer', lineHeight: 0, color: '#fff' }}>
+              style={{ border: 'none', background: 'transparent', cursor: 'pointer', lineHeight: 0, color: 'rgba(255,255,255,0.8)', flexShrink: 0, padding: 2 }}>
               {showPassword ? (
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
               ) : (
@@ -220,9 +240,11 @@ function LoginScreen({ loginForm, setLoginForm, onSubmit, loginError, showPasswo
             </button>
           </div>
 
-          {loginError && <p style={{ color: '#ff8a8a', fontSize: 13, margin: '0 0 12px' }}>{loginError}</p>}
+          {loginError && <p style={{ color: '#ff8a8a', fontSize: 13, margin: '0 0 14px', textAlign: 'center' as const }}>{loginError}</p>}
 
-          <button type="submit" style={{ width: '100%', padding: '11px', background: '#C41E3A', color: '#fff', border: 'none', borderRadius: 4, fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>Sign In</button>
+          <div style={{ textAlign: 'center' as const, marginTop: 10 }}>
+            <button type="submit" style={{ padding: '11px 52px', background: '#C41E3A', color: '#fff', border: 'none', borderRadius: 6, fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>Sign In</button>
+          </div>
         </form>
       </div>
     </div>
