@@ -184,10 +184,10 @@ function LoginScreen({ loginForm, setLoginForm, onSubmit, loginError, showPasswo
       {/* Right login panel */}
       <div style={{ flex: 1, background: '#d4d4d4', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, minWidth: 0 }}>
         <div style={{ background: '#fff', width: '100%', maxWidth: 380, padding: '40px 36px', boxShadow: '0 6px 24px rgba(0,0,0,0.12)' }}>
-          <div style={{ textAlign: 'center' as const, marginBottom: 8 }}>
-            <img src="/inova-logo.png" alt="INOVA" style={{ height: 96, objectFit: 'contain' as const }} />
+          <div style={{ textAlign: 'center' as const, marginBottom: -8 }}>
+            <img src="/inova-logo.png" alt="INOVA" style={{ height: 120, objectFit: 'contain' as const }} />
           </div>
-          <div style={{ textAlign: 'center' as const, fontStyle: 'italic', fontWeight: 700, color: '#1A232C', marginBottom: 30 }}>Inova CV Filter</div>
+          <div style={{ textAlign: 'center' as const, fontStyle: 'italic', fontWeight: 700, color: '#1A232C', marginTop: 0, marginBottom: 24 }}>Inova CV Filter</div>
 
           <form onSubmit={onSubmit}>
             <label style={{ display: 'block', fontSize: 13, color: '#646C72', marginBottom: 6 }}>Username or email</label>
