@@ -889,7 +889,7 @@ function JobDetail({ job, isScreening, totalApplicants, onClose, onDelete, onTog
     setSavedSummaries(s => s.filter(x => x.id !== id))
   }
   return (
-    <div style={{ background: '#fff', borderRadius: 14, width: '100%', maxWidth: 660, maxHeight: '90vh', overflowY: 'auto' as const, padding: 32 }}>
+    <div style={{ background: '#fff', borderRadius: 14, width: '100%', maxWidth: 1100, maxHeight: '90vh', overflowY: 'auto' as const, padding: 32 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
         <div style={{ flex: 1, paddingRight: 16 }}>
           <h2 style={{ margin: 0, fontSize: 22 }}>{job.title}</h2>
