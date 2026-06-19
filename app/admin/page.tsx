@@ -189,13 +189,17 @@ function LoginScreen({ loginForm, setLoginForm, onSubmit, loginError, showPasswo
       <canvas ref={canvasRef} style={{ position: 'absolute' as const, inset: 0, width: '100%', height: '100%', display: 'block', zIndex: 0 }} />
       <style>{`
         .login-field::placeholder { color: rgba(255,255,255,0.55); }
-        input:-webkit-autofill,
-        input:-webkit-autofill:hover,
-        input:-webkit-autofill:focus {
-          -webkit-text-fill-color: #fff;
-          -webkit-box-shadow: 0 0 0 1000px transparent inset;
-          transition: background-color 9999s ease-in-out 0s;
-          caret-color: #fff;
+        .login-field:-webkit-autofill,
+        .login-field:-webkit-autofill:hover,
+        .login-field:-webkit-autofill:focus,
+        .login-field:-webkit-autofill:active {
+          -webkit-text-fill-color: #fff !important;
+          -webkit-background-clip: text !important;
+          background-clip: text !important;
+          -webkit-box-shadow: 0 0 0 1000px transparent inset !important;
+          box-shadow: 0 0 0 1000px transparent inset !important;
+          transition: background-color 9999s ease-in-out 0s !important;
+          caret-color: #fff !important;
         }
       `}</style>
 
@@ -206,7 +210,7 @@ function LoginScreen({ loginForm, setLoginForm, onSubmit, loginError, showPasswo
         boxShadow: '0 10px 40px rgba(0,0,0,0.45)', padding: '44px 56px 52px'
       }}>
         <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center' }}>
-          <img src="/inova-logo.png" alt="INOVA" style={{ width: 240, maxWidth: '80%', objectFit: 'contain' as const, marginBottom: -22 }} />
+          <img src="/inova-logo.png" alt="INOVA" style={{ width: 240, maxWidth: '80%', objectFit: 'contain' as const, marginBottom: 4 }} />
           <div style={{ textAlign: 'center' as const, fontStyle: 'italic', fontWeight: 700, color: '#fff', marginBottom: 30 }}>Inova CV Filter</div>
         </div>
 
