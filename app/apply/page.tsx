@@ -37,14 +37,14 @@ function DotBackground() {
     const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight }
     resize()
     window.addEventListener('resize', resize)
-    const N = 80
+    const N = 120
     const dots = Array.from({ length: N }, () => ({
       x: Math.random() * canvas.width,
       y: Math.random() * canvas.height,
       vx: (Math.random() - 0.5) * 0.4,
       vy: (Math.random() - 0.5) * 0.4,
-      r: Math.random() * 1.8 + 0.6,
-      a: Math.random() * 0.22 + 0.10,
+      r: Math.random() * 2.2 + 0.9,
+      a: Math.random() * 0.45 + 0.25,
     }))
     const tick = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height)
