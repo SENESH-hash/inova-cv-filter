@@ -1208,17 +1208,18 @@ function CvSummaryTable({ applicants, jobTitle, subtitle, onClose, onSave, onDel
 
   const exportExcel = () => {
     const esc = (s: any) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    const head = applicants.map((_, i) => `<th style="border:1px solid #999;padding:8px 14px;background:#C41E3A;color:#fff;font-weight:bold;">Applicant ${i + 1}</th>`).join('')
-    const rows = SUMMARY_ROWS.map(row => {
-      const cells = applicants.map((a, i) => {
+    const headCells = SUMMARY_ROWS.map(row => `<th style="border:1px solid #999;padding:8px 14px;background:#C41E3A;color:#fff;font-weight:bold;">${row.label}</th>`).join('')
+    const bodyRows = applicants.map((a, i) => {
+      const detailCells = SUMMARY_ROWS.map(row => {
         const bg = highlights[`${row.key}_${i}`] || '#ffffff'
         return `<td style="border:1px solid #999;padding:8px 14px;background:${bg};">${esc(a[row.key] || '')}</td>`
       }).join('')
-      return `<tr><td style="border:1px solid #999;padding:8px 14px;background:#f0f0f0;font-weight:bold;">${row.label}</td>${cells}</tr>`
+      const tick = `<td style="border:1px solid #999;padding:8px 14px;text-align:center;font-size:15pt;color:#111;">${selected[String(i)] ? '\u2713' : ''}</td>`
+      return `<tr><td style="border:1px solid #999;padding:8px 14px;background:#f0f0f0;font-weight:bold;">Applicant ${i + 1}</td>${detailCells}${tick}</tr>`
     }).join('')
-    const selectedRow = `<tr><td style="border:1px solid #999;padding:8px 14px;background:#f0f0f0;font-weight:bold;">Selected</td>${applicants.map((_, i) => `<td style="border:1px solid #999;padding:8px 14px;text-align:center;font-size:15pt;color:#111;">${selected[String(i)] ? '\u2713' : ''}</td>`).join('')}</tr>`
-    const noteRow = note ? `<tr><td colspan="${applicants.length + 1}" style="border:1px solid #999;padding:8px 14px;background:#fffbe6;">Note: ${esc(note)}</td></tr>` : ''
-    const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"/></head><body><table style="border-collapse:collapse;font-family:Calibri,Arial,sans-serif;font-size:12pt;"><tr><th style="border:1px solid #999;padding:8px 14px;background:#C41E3A;color:#fff;font-weight:bold;text-align:left;">Detail</th>${head}</tr>${rows}${selectedRow}${noteRow}</table></body></html>`
+    const totalCols = SUMMARY_ROWS.length + 2
+    const noteRow = note ? `<tr><td colspan="${totalCols}" style="border:1px solid #999;padding:8px 14px;background:#fffbe6;">Note: ${esc(note)}</td></tr>` : ''
+    const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"/></head><body><table style="border-collapse:collapse;font-family:Calibri,Arial,sans-serif;font-size:12pt;"><tr><th style="border:1px solid #999;padding:8px 14px;background:#C41E3A;color:#fff;font-weight:bold;text-align:left;">Applicant</th>${headCells}<th style="border:1px solid #999;padding:8px 14px;background:#C41E3A;color:#fff;font-weight:bold;">Selected</th></tr>${bodyRows}${noteRow}</table></body></html>`
     const blob = new Blob([html], { type: 'application/vnd.ms-excel' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -1254,35 +1255,31 @@ function CvSummaryTable({ applicants, jobTitle, subtitle, onClose, onSave, onDel
         {onClose && <button onClick={onClose} style={{ border: 'none', background: 'none', fontSize: 20, cursor: 'pointer', color: '#999', lineHeight: 1 }}>×</button>}
       </div>
 
-      {editing && !readOnly && <div style={{ fontSize: 12, color: '#646C72', marginBottom: 8 }}>Click any applicant cell to cycle its highlight colour (none → yellow → green → pink). Tick the Selected box to mark a candidate.</div>}
+      {editing && !readOnly && <div style={{ fontSize: 12, color: '#646C72', marginBottom: 8 }}>Click any detail cell to cycle its highlight colour (none → yellow → green → pink). Tick the Selected box to mark a candidate.</div>}
 
       <div style={{ overflowX: 'auto' }}>
         <table style={{ borderCollapse: 'collapse', width: '100%' }}>
           <thead>
             <tr>
-              <th style={{ ...thStyle, textAlign: 'left' }}>Detail</th>
-              {applicants.map((_, i) => <th key={i} style={thStyle}>Applicant {i + 1}</th>)}
+              <th style={{ ...thStyle, textAlign: 'left' }}>Applicant</th>
+              {SUMMARY_ROWS.map(row => <th key={row.key} style={thStyle}>{row.label}</th>)}
+              <th style={thStyle}>Selected</th>
             </tr>
           </thead>
           <tbody>
-            {SUMMARY_ROWS.map(row => (
-              <tr key={row.key}>
-                <td style={{ ...tdStyle, fontWeight: 600, background: '#f8f9fa' }}>{row.label}</td>
-                {applicants.map((a, i) => {
+            {applicants.map((a, i) => (
+              <tr key={i}>
+                <td style={{ ...tdStyle, fontWeight: 600, background: '#f8f9fa', whiteSpace: 'nowrap' }}>Applicant {i + 1}</td>
+                {SUMMARY_ROWS.map(row => {
                   const k = `${row.key}_${i}`
                   return (
-                    <td key={i} onClick={() => cycleHighlight(row.key, i)}
+                    <td key={row.key} onClick={() => cycleHighlight(row.key, i)}
                       style={{ ...tdStyle, background: highlights[k] || '#fff', cursor: editing && !readOnly ? 'pointer' : 'default' }}>
                       {a[row.key] || '—'}
                     </td>
                   )
                 })}
-              </tr>
-            ))}
-            <tr>
-              <td style={{ ...tdStyle, fontWeight: 600, background: '#f8f9fa' }}>Selected</td>
-              {applicants.map((_, i) => (
-                <td key={i} style={{ ...tdStyle, textAlign: 'center' }}>
+                <td style={{ ...tdStyle, textAlign: 'center' }}>
                   <div onClick={() => toggleSelected(i)}
                     style={{ width: 24, height: 24, margin: '0 auto', border: '1.5px solid #888', borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: readOnly ? 'default' : 'pointer', background: '#fff' }}>
                     {selected[String(i)] && (
@@ -1292,8 +1289,8 @@ function CvSummaryTable({ applicants, jobTitle, subtitle, onClose, onSave, onDel
                     )}
                   </div>
                 </td>
-              ))}
-            </tr>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
@@ -1318,6 +1315,7 @@ function CvSummaryTable({ applicants, jobTitle, subtitle, onClose, onSave, onDel
     </div>
   )
 }
+
 function ApplicantCard({ applicant: a, rank, showScore, onSelect, onUpdate, onDelete }: any) {
   const ed = a.extracted_data || {}
   const ks = a.key_skills || {}
