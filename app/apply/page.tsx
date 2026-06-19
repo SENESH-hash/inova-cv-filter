@@ -37,28 +37,36 @@ function DotBackground() {
     const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight }
     resize()
     window.addEventListener('resize', resize)
-    const N = 70
+    const N = 90
     const dots = Array.from({ length: N }, () => ({
       x: Math.random() * canvas.width,
       y: Math.random() * canvas.height,
       vx: (Math.random() - 0.5) * 0.5,
       vy: (Math.random() - 0.5) * 0.5,
-      r: Math.random() * 1.8 + 0.5,
-      a: Math.random() * 0.5 + 0.25,
+      r: Math.random() * 1.1 + 0.5,
+      base: Math.random() * 0.4 + 0.5,
+      phase: Math.random() * Math.PI * 2,
+      tw: Math.random() * 0.04 + 0.02,
     }))
+    let frame = 0
     const tick = () => {
+      frame++
       ctx.clearRect(0, 0, canvas.width, canvas.height)
+      ctx.shadowColor = 'rgba(226,35,26,0.9)'
       for (const d of dots) {
         d.x += d.vx; d.y += d.vy
         if (d.x < 0) d.x = canvas.width
         if (d.x > canvas.width) d.x = 0
         if (d.y < 0) d.y = canvas.height
         if (d.y > canvas.height) d.y = 0
+        const a = d.base * (0.55 + 0.45 * Math.sin(d.phase + frame * d.tw))
+        ctx.shadowBlur = 10
         ctx.beginPath()
         ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(226,35,26,${d.a})`
+        ctx.fillStyle = `rgba(255,80,70,${a})`
         ctx.fill()
       }
+      ctx.shadowBlur = 0
       raf = requestAnimationFrame(tick)
     }
     tick()
