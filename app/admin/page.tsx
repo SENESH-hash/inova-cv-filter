@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 
 const STATUS_COLORS: Record<string, string> = {
   New: '#2563eb', Shortlisted: '#059669', Interviewed: '#d97706', Rejected: '#dc2626',
@@ -124,6 +124,100 @@ function mapApplicantToSummary(a: any) {
     technology_highlights: tech,
     languages: langs,
   }
+}
+
+// ─── Login Screen ───────────────────────────────────────────────────────────────
+function LoginScreen({ loginForm, setLoginForm, onSubmit, loginError, showPassword, setShowPassword }: {
+  loginForm: { username: string, password: string }
+  setLoginForm: React.Dispatch<React.SetStateAction<{ username: string, password: string }>>
+  onSubmit: (e: React.FormEvent) => void
+  loginError: string
+  showPassword: boolean
+  setShowPassword: React.Dispatch<React.SetStateAction<boolean>>
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    let raf = 0
+    const resize = () => { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight }
+    resize()
+    window.addEventListener('resize', resize)
+    const N = 70
+    const dots = Array.from({ length: N }, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      vx: (Math.random() - 0.5) * 0.5,
+      vy: (Math.random() - 0.5) * 0.5,
+      r: Math.random() * 1.8 + 0.5,
+      a: Math.random() * 0.5 + 0.25,
+    }))
+    const tick = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      for (const d of dots) {
+        d.x += d.vx; d.y += d.vy
+        if (d.x < 0) d.x = canvas.width
+        if (d.x > canvas.width) d.x = 0
+        if (d.y < 0) d.y = canvas.height
+        if (d.y > canvas.height) d.y = 0
+        ctx.beginPath()
+        ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(226,35,26,${d.a})`
+        ctx.fill()
+      }
+      raf = requestAnimationFrame(tick)
+    }
+    tick()
+    return () => { cancelAnimationFrame(raf); window.removeEventListener('resize', resize) }
+  }, [])
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex' }}>
+      {/* Left animated panel */}
+      <div style={{ flex: 1, position: 'relative' as const, background: '#0d0d0d', overflow: 'hidden', minWidth: 0 }}>
+        <canvas ref={canvasRef} style={{ position: 'absolute' as const, inset: 0, width: '100%', height: '100%', display: 'block' }} />
+      </div>
+
+      {/* Right login panel */}
+      <div style={{ flex: 1, background: '#d4d4d4', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, minWidth: 0 }}>
+        <div style={{ background: '#fff', width: '100%', maxWidth: 380, padding: '40px 36px', boxShadow: '0 6px 24px rgba(0,0,0,0.12)' }}>
+          <div style={{ textAlign: 'center' as const, marginBottom: 4 }}>
+            <span style={{ fontSize: 34, fontWeight: 800, color: '#E2231A', letterSpacing: 1 }}>INOVA</span>
+            <span style={{ fontSize: 12, color: '#E2231A', verticalAlign: 'super' as const }}>®</span>
+          </div>
+          <div style={{ textAlign: 'center' as const, fontStyle: 'italic', fontWeight: 700, color: '#1A232C', marginBottom: 30 }}>Inova CV Filter</div>
+
+          <form onSubmit={onSubmit}>
+            <label style={{ display: 'block', fontSize: 13, color: '#646C72', marginBottom: 6 }}>Username or email</label>
+            <input value={loginForm.username} onChange={e => setLoginForm(f => ({ ...f, username: e.target.value }))}
+              style={{ width: '100%', boxSizing: 'border-box' as const, border: 'none', borderBottom: '1px solid #ccc', padding: '8px 2px', fontSize: 14, outline: 'none', marginBottom: 22, background: 'transparent' }} />
+
+            <label style={{ display: 'block', fontSize: 13, color: '#646C72', marginBottom: 6 }}>Password</label>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, marginBottom: 24 }}>
+              <input type={showPassword ? 'text' : 'password'} value={loginForm.password}
+                onChange={e => setLoginForm(f => ({ ...f, password: e.target.value }))}
+                style={{ flex: 1, boxSizing: 'border-box' as const, border: 'none', borderBottom: '1px solid #ccc', padding: '8px 2px', fontSize: 14, outline: 'none', background: 'transparent' }} />
+              <button type="button" onClick={() => setShowPassword(s => !s)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                style={{ border: '1px solid #ccc', borderRadius: 3, padding: '5px 8px', background: '#fff', cursor: 'pointer', lineHeight: 0, color: '#646C72' }}>
+                {showPassword ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                )}
+              </button>
+            </div>
+
+            {loginError && <p style={{ color: '#c00', fontSize: 13, margin: '0 0 12px' }}>{loginError}</p>}
+
+            <button type="submit" style={{ width: '100%', padding: '11px', background: '#1565D8', color: '#fff', border: 'none', borderRadius: 4, fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>Sign In</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function AdminPage() {
@@ -515,38 +609,14 @@ ${techData.length>0?`<tr><th rowspan="${Math.max(Math.ceil(techData.length/2),1)
 
   // ─── Login screen ─────────────────────────────────────────────────────────────
   if (!token) return (
-    <div style={styles.page}>
-      <div style={{ ...styles.card, maxWidth: 380, cursor: 'default', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
-        <h2 style={{ margin: '0 0 6px' }}>Inova IT — Admin</h2>
-        <p style={{ color: '#666', margin: '0 0 24px', fontSize: 14 }}>Sign in to access the dashboard</p>
-        <form onSubmit={login}>
-          <input placeholder="Username" value={loginForm.username} style={styles.input}
-            onChange={e => setLoginForm(f => ({ ...f, username: e.target.value }))} />
-          <div style={{ position: 'relative', marginTop: 10 }}>
-            <input placeholder="Password" type={showPassword ? 'text' : 'password'} value={loginForm.password}
-              style={{ ...styles.input, width: '100%', boxSizing: 'border-box', paddingRight: 40 }}
-              onChange={e => setLoginForm(f => ({ ...f, password: e.target.value }))} />
-            <button type="button" onClick={() => setShowPassword(s => !s)}
-              aria-label={showPassword ? 'Hide password' : 'Show password'}
-              style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 0, color: '#646C72', display: 'flex', alignItems: 'center' }}>
-              {showPassword ? (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                  <line x1="1" y1="1" x2="23" y2="23" />
-                </svg>
-              ) : (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-              )}
-            </button>
-          </div>
-          {loginError && <p style={{ color: '#c00', fontSize: 13, marginTop: 8 }}>{loginError}</p>}
-          <button style={{ ...styles.btn, marginTop: 16, width: '100%' }}>Sign In</button>
-        </form>
-      </div>
-    </div>
+    <LoginScreen
+      loginForm={loginForm}
+      setLoginForm={setLoginForm}
+      onSubmit={login}
+      loginError={loginError}
+      showPassword={showPassword}
+      setShowPassword={setShowPassword}
+    />
   )
 
   // ─── Screened results banner ──────────────────────────────────────────────────
