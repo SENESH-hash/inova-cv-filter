@@ -666,7 +666,7 @@ ${techData.length>0?`<tr><th rowspan="${Math.max(Math.ceil(techData.length/2),1)
   // ─── Main dashboard ───────────────────────────────────────────────────────────
   return (
     <div style={{ height: '100vh', overflowY: 'auto' as const, background: '#F3F3F3', filter: darkMode ? 'invert(1) hue-rotate(180deg)' : undefined }}>
-      {darkMode && <style>{`.no-invert { filter: invert(1) hue-rotate(180deg); }`}</style>}
+      {darkMode && <style>{`.no-invert { filter: hue-rotate(180deg) invert(1); }`}</style>}
 
       {/* Header */}
       <div className="no-invert" style={{ background: '#C41E3A', borderBottom: '1px solid #8B0000', padding: '14px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
