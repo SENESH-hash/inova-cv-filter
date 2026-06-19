@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 const REFERRAL_OPTIONS = ['Social Networks', 'Company Website', 'Referrals and Networking', 'LinkedIn Jobs Section']
 
@@ -24,6 +24,47 @@ const PROFICIENCY_OPTIONS = [
 interface LanguageEntry {
   language: string
   proficiency: string
+}
+
+function DotBackground() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    let raf = 0
+    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight }
+    resize()
+    window.addEventListener('resize', resize)
+    const N = 80
+    const dots = Array.from({ length: N }, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      vx: (Math.random() - 0.5) * 0.4,
+      vy: (Math.random() - 0.5) * 0.4,
+      r: Math.random() * 1.8 + 0.6,
+      a: Math.random() * 0.22 + 0.10,
+    }))
+    const tick = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      for (const d of dots) {
+        d.x += d.vx; d.y += d.vy
+        if (d.x < 0) d.x = canvas.width
+        if (d.x > canvas.width) d.x = 0
+        if (d.y < 0) d.y = canvas.height
+        if (d.y > canvas.height) d.y = 0
+        ctx.beginPath()
+        ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(196,30,58,${d.a})`
+        ctx.fill()
+      }
+      raf = requestAnimationFrame(tick)
+    }
+    tick()
+    return () => { cancelAnimationFrame(raf); window.removeEventListener('resize', resize) }
+  }, [])
+  return <canvas ref={canvasRef} style={{ position: 'fixed' as const, inset: 0, width: '100%', height: '100%', zIndex: 0, pointerEvents: 'none' as const }} />
 }
 
 export default function ApplyPage() {
@@ -147,6 +188,7 @@ export default function ApplyPage() {
 
   if (status === 'success') return (
     <div style={styles.page}>
+      <DotBackground />
       <div style={styles.card}>
         <div style={{ fontSize: 48, marginBottom: 16 }}>Application Received!</div>
         <br/>
@@ -157,6 +199,7 @@ export default function ApplyPage() {
 
   return (
     <div style={styles.page}>
+      <DotBackground />
       <div style={styles.card}>
         <div style={{ background: '#C41E3A', margin: '-36px -40px 28px', padding: '24px 40px', borderRadius: '14px 14px 0 0' }}>
           <h1 style={{ margin: '0 0 4px', fontSize: 22, color: '#fff', fontWeight: 700 }}>Inova IT Systems (Pvt) Ltd</h1>
@@ -519,7 +562,7 @@ function Field({ label, name, value, onChange, type = 'text', required = false, 
 
 const styles: Record<string, React.CSSProperties> = {
   page: { minHeight: '100vh', background: '#F9F9F9', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 16px' },
-  card: { background: '#fff', borderRadius: 14, padding: '36px 40px', width: '100%', maxWidth: 700, boxShadow: '0 2px 20px rgba(196,30,58,0.08)' },
+  card: { background: '#fff', borderRadius: 14, padding: '36px 40px', width: '100%', maxWidth: 700, boxShadow: '0 2px 20px rgba(196,30,58,0.08)', position: 'relative' as const, zIndex: 1 },
   grid2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 },
   label: { display: 'block', fontSize: 13, fontWeight: 500, color: '#444', marginBottom: 6 },
   input: { width: '100%', padding: '9px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, outline: 'none', boxSizing: 'border-box' as const },
