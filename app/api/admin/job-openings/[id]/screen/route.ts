@@ -118,7 +118,7 @@ Sort by score descending.`
       Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
+      model: 'openai/gpt-oss-120b',
       temperature: 0.1,
       max_tokens: 4096,
       messages: [{ role: 'user', content: prompt }],
