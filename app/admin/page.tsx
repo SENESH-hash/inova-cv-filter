@@ -293,6 +293,9 @@ export default function AdminPage() {
   const [darkMode, setDarkMode] = useState(false)
   useEffect(() => { setDarkMode(localStorage.getItem('admin_dark') === '1') }, [])
   const toggleDark = () => setDarkMode(d => { localStorage.setItem('admin_dark', d ? '0' : '1'); return !d })
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  useEffect(() => { setSidebarOpen(localStorage.getItem('admin_sidebar') !== '0') }, [])
+  const toggleSidebar = () => setSidebarOpen(o => { localStorage.setItem('admin_sidebar', o ? '0' : '1'); return !o })
 
   useEffect(() => {
     const t = localStorage.getItem('admin_token')
@@ -664,29 +667,73 @@ ${techData.length>0?`<tr><th rowspan="${Math.max(Math.ceil(techData.length/2),1)
   const displayApplicants = screenedResults ? screenedResults.applicants : filteredApplicants
 
   // ─── Main dashboard ───────────────────────────────────────────────────────────
+  const sideItem: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '11px 18px', background: 'transparent', border: 'none', color: '#fff', fontSize: 14, cursor: 'pointer', textAlign: 'left' as const, whiteSpace: 'nowrap' as const, overflow: 'hidden' }
+  const sideIcon: React.CSSProperties = { display: 'flex', flexShrink: 0, width: 18, justifyContent: 'center' }
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column' as const, height: '100vh', background: darkMode ? '#000' : '#F3F3F3' }}>
+    <div style={{ display: 'flex', height: '100vh', background: darkMode ? '#000' : '#F3F3F3' }}>
+
+      {/* ── Sidebar ── */}
+      <div style={{ width: sidebarOpen ? 230 : 64, flexShrink: 0, background: '#1A232C', color: '#fff', display: 'flex', flexDirection: 'column' as const, transition: 'width 0.2s', overflow: 'hidden' }}>
+        <button onClick={toggleSidebar} title="Toggle sidebar" style={{ ...sideItem, padding: '18px', justifyContent: sidebarOpen ? 'space-between' : 'center', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          {sidebarOpen && <span style={{ fontWeight: 700, letterSpacing: 0.3 }}>Menu</span>}
+          <span style={sideIcon}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" /></svg>
+          </span>
+        </button>
+
+        <div style={{ marginTop: 8 }}>
+          {activeTab === 'cvs' && (
+            <div style={{ ...sideItem, cursor: 'default', color: 'rgba(255,255,255,0.65)', fontSize: 13 }} title={`${displayApplicants.length} applicants`}>
+              <span style={sideIcon}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>
+              </span>
+              {sidebarOpen && <span>{displayApplicants.length}{!screenedResults && displayApplicants.length !== applicants.length ? ` / ${applicants.length}` : ''} applicant{applicants.length !== 1 ? 's' : ''}</span>}
+            </div>
+          )}
+
+          <button onClick={toggleDark} title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'} style={sideItem}>
+            <span style={sideIcon}>
+              {darkMode ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" /></svg>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>
+              )}
+            </span>
+            {sidebarOpen && <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>}
+          </button>
+
+          <button onClick={() => setShowRoleManager(!showRoleManager)} title="Manage Roles" style={{ ...sideItem, background: showRoleManager ? 'rgba(255,255,255,0.1)' : 'transparent', borderLeft: showRoleManager ? '3px solid #C41E3A' : '3px solid transparent' }}>
+            <span style={sideIcon}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+            </span>
+            {sidebarOpen && <span>Manage Roles</span>}
+          </button>
+
+          {activeTab === 'cvs' && (
+            <button onClick={exportCSV} title="Export CSV" style={sideItem}>
+              <span style={sideIcon}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+              </span>
+              {sidebarOpen && <span>Export CSV</span>}
+            </button>
+          )}
+        </div>
+
+        <button onClick={() => { localStorage.removeItem('admin_token'); setToken(null) }} title="Sign Out" style={{ ...sideItem, marginTop: 'auto', color: '#ffb4b4' }}>
+          <span style={sideIcon}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>
+          </span>
+          {sidebarOpen && <span>Sign Out</span>}
+        </button>
+      </div>
+
+      {/* ── Main column ── */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, minWidth: 0 }}>
 
       {/* Header — always real brand red, kept outside the dark-mode filter */}
-      <div style={{ background: '#C41E3A', borderBottom: '1px solid #8B0000', padding: '14px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+      <div style={{ background: '#C41E3A', borderBottom: '1px solid #8B0000', padding: '16px 28px', flexShrink: 0 }}>
         <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: '#fff' }}>Inova IT — Admin</h1>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          {activeTab === 'cvs' && (
-            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>
-              {displayApplicants.length}{!screenedResults && displayApplicants.length !== applicants.length ? ` / ${applicants.length}` : ''} applicant{applicants.length !== 1 ? 's' : ''}
-            </span>
-          )}
-          <button onClick={toggleDark} title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'} aria-label="Toggle dark mode" style={{ ...styles.secondaryBtn, color: '#fff', borderColor: 'rgba(255,255,255,0.5)', padding: '7px 10px', lineHeight: 0 }}>
-            {darkMode ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" /></svg>
-            ) : (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>
-            )}
-          </button>
-          <button onClick={() => setShowRoleManager(!showRoleManager)} style={{ ...styles.secondaryBtn, background: showRoleManager ? '#f0f9f6' : 'transparent', color: showRoleManager ? '#0f6e56' : '#fff', borderColor: showRoleManager ? '#0f6e56' : 'rgba(255,255,255,0.5)' }}>Manage Roles</button>
-          {activeTab === 'cvs' && <button onClick={exportCSV} style={{ ...styles.secondaryBtn, color: '#fff', borderColor: 'rgba(255,255,255,0.5)' }}>Export CSV</button>}
-          <button onClick={() => { localStorage.removeItem('admin_token'); setToken(null) }} style={{ ...styles.secondaryBtn, color: '#ffaaaa', borderColor: 'rgba(255,255,255,0.3)' }}>Sign Out</button>
-        </div>
       </div>
 
       {/* Scrollable content — dark-mode filter lives here, not on the header */}
@@ -912,6 +959,7 @@ ${techData.length>0?`<tr><th rowspan="${Math.max(Math.ceil(techData.length/2),1)
           onNo={() => setConfirmDialog(null)}
         />
       )}
+      </div>
       </div>
     </div>
   )
