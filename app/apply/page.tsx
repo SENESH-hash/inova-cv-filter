@@ -210,7 +210,7 @@ export default function ApplyPage() {
       <DotBackground />
       <div style={styles.card}>
         <div style={{ background: '#C41E3A', margin: '-36px -40px 28px', padding: '24px 40px', borderRadius: '14px 14px 0 0' }}>
-          <h1 style={{ margin: '0 0 4px', fontSize: 22, color: '#fff', fontWeight: 700 }}>Inova IT Systems (Pvt) Ltd</h1>
+          <h1 style={{ margin: '0 0 4px', fontSize: 22, color: '#fff', fontWeight: 700 }}>ICMS Portal</h1>
           <p style={{ margin: 0, color: 'rgba(255,255,255,0.85)', fontSize: 14 }}>Submit your CV — we'll be in touch if there's a match.</p>
         </div>
 
