@@ -732,7 +732,7 @@ ${techData.length>0?`<tr><th rowspan="${Math.max(Math.ceil(techData.length/2),1)
 
       {/* Header — always real brand red, kept outside the dark-mode filter */}
       <div style={{ background: '#C41E3A', borderBottom: '1px solid #8B0000', padding: '16px 28px', flexShrink: 0 }}>
-        <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: '#fff' }}>Inova IT — Admin</h1>
+        <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: '#fff' }}>ICMS Portal — Admin</h1>
       </div>
 
       {/* Scrollable content — dark-mode filter lives here, not on the header */}
