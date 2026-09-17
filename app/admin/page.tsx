@@ -622,13 +622,13 @@ ${techData.length>0?`<tr><th rowspan="${Math.max(Math.ceil(techData.length/2),1)
 <div class="section-title">Professional Qualifications</div>
 <table><tr><th>Education</th><td>${ed.degree_level?`${ed.degree_level}${ed.field_of_study?' in '+ed.field_of_study:''}`:''}</td></tr><tr><th>Certifications</th><td>${(ed.certifications||[]).join(', ')}</td></tr><tr><th>Special Achievements</th><td></td></tr></table>
 <div class="section-title">Experience</div>
-<div style="font-weight:bold;font-size:13px;margin:8px 0 6px;text-transform:uppercase;">Inova IT Systems (Pvt) Ltd</div>
+<div style="font-weight:bold;font-size:13px;margin:8px 0 6px;text-transform:uppercase;">ICMS Portal</div>
 <pre>${a.professional_qualifications||''}</pre></body></html>`
 
     const blob = new Blob([html], { type: 'text/html' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
-    link.href = url; link.download = `${(a.full_name||'applicant').replace(/ /g,'_')}_Inova_CV.html`; link.click()
+    link.href = url; link.download = `${(a.full_name||'applicant').replace(/ /g,'_')}_CV.html`; link.click()
   }
 
   // ─── Export CSV ──────────────────────────────────────────────────────────────
@@ -1797,7 +1797,7 @@ function ApplicantDetail({ applicant: a, onClose, onUpdate, onDelete, onDownload
         </a>
         <button onClick={() => onDownloadInova(a)}
           style={{ padding: '9px 18px', background: '#C41E3A', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>
-          Download Inova CV
+          Download CV (Formatted)
         </button>
         <button onClick={() => onDelete(a.id)}
           style={{ padding: '9px 18px', background: '#fff0f0', color: '#c00', border: '1px solid #fcc', borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>
