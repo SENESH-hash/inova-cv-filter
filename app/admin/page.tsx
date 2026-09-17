@@ -210,7 +210,6 @@ function LoginScreen({ loginForm, setLoginForm, onSubmit, loginError, showPasswo
         boxShadow: '0 10px 40px rgba(0,0,0,0.45)', padding: '44px 56px 52px'
       }}>
         <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center' }}>
-          <img src="/inova-logo.png" alt="INOVA" style={{ width: 240, maxWidth: '80%', objectFit: 'contain' as const, marginBottom: 4 }} />
           <div style={{ textAlign: 'center' as const, fontStyle: 'italic', fontWeight: 700, color: '#fff', marginBottom: 30 }}>Inova CV Filter</div>
         </div>
 
