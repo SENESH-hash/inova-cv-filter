@@ -666,14 +666,14 @@ ${techData.length>0?`<tr><th rowspan="${Math.max(Math.ceil(techData.length/2),1)
   const displayApplicants = screenedResults ? screenedResults.applicants : filteredApplicants
 
   // ─── Main dashboard ───────────────────────────────────────────────────────────
-  const sideItem: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '11px 18px', background: 'transparent', border: 'none', color: '#1A232C', fontSize: 14, cursor: 'pointer', textAlign: 'left' as const, whiteSpace: 'nowrap' as const, overflow: 'hidden' }
+  const sideItem: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '11px 18px', background: 'transparent', border: 'none', color: '#fff', fontSize: 14, cursor: 'pointer', textAlign: 'left' as const, whiteSpace: 'nowrap' as const, overflow: 'hidden' }
   const sideIcon: React.CSSProperties = { display: 'flex', flexShrink: 0, width: 18, justifyContent: 'center' }
 
   return (
     <div style={{ display: 'flex', height: '100vh', background: darkMode ? '#000' : '#F3F3F3' }}>
 
       {/* ── Sidebar ── */}
-      <div style={{ width: sidebarOpen ? 230 : 64, flexShrink: 0, background: '#D4A017', color: '#fff', display: 'flex', flexDirection: 'column' as const, transition: 'width 0.2s', overflow: 'hidden' }}>
+      <div style={{ width: sidebarOpen ? 230 : 64, flexShrink: 0, background: '#1A232C', color: '#fff', display: 'flex', flexDirection: 'column' as const, transition: 'width 0.2s', overflow: 'hidden' }}>
         <button onClick={toggleSidebar} title="Toggle sidebar" style={{ ...sideItem, padding: '18px', justifyContent: sidebarOpen ? 'space-between' : 'center', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           {sidebarOpen && <span style={{ fontWeight: 700, letterSpacing: 0.3 }}>Menu</span>}
           <span style={sideIcon}>
